@@ -1,6 +1,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
-import { useLocation, Navigate, useNavigate, useEffect } from "react-router-dom";
+import { useLocation, Navigate, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import NavBar from "./NavBar";
 
 interface LayoutProps {
