@@ -44,13 +44,19 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     
     setLoading(true);
     try {
+      console.log("Loading coupons for user:", currentUser.id);
       const { data, error } = await supabase
         .from('coupons')
         .select('*')
         .eq('user_id', currentUser.id)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error loading coupons:", error);
+        throw error;
+      }
+      
+      console.log("Loaded coupons:", data);
       
       // Transform Supabase data to match our Coupon type
       const formattedCoupons: Coupon[] = data.map((coupon: any) => ({
@@ -85,6 +91,8 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     try {
+      console.log("Creating coupon:", couponData);
+      
       // Convert to Supabase format
       const { data, error } = await supabase
         .from('coupons')
@@ -101,7 +109,12 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .select('*')
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error from Supabase:", error);
+        throw error;
+      }
+      
+      console.log("Created coupon response:", data);
       
       // Convert back to our Coupon type
       const newCoupon: Coupon = {
