@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,6 +21,7 @@ type FormData = z.infer<typeof formSchema>;
 const LoginForm = () => {
   const { login, loading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
   
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -33,6 +34,8 @@ const LoginForm = () => {
   const onSubmit = async (data: FormData) => {
     try {
       await login(data.email, data.password);
+      // Explicitly navigate to home page after successful login
+      navigate("/");
     } catch (error) {
       // Error is handled in the AuthContext
       console.error("Login failed", error);

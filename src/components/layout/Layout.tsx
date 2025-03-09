@@ -1,6 +1,6 @@
 
 import { useAuth } from "@/contexts/AuthContext";
-import { useLocation, Navigate } from "react-router-dom";
+import { useLocation, Navigate, useNavigate, useEffect } from "react-router-dom";
 import NavBar from "./NavBar";
 
 interface LayoutProps {
@@ -11,28 +11,43 @@ interface LayoutProps {
 const Layout = ({ children, requireAuth = false }: LayoutProps) => {
   const { currentUser, loading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
-  // If authentication is required but user is not authenticated, redirect to login
-  if (requireAuth && !loading && !currentUser) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  // Add an effect to handle redirection when auth state changes
+  useEffect(() => {
+    if (!loading) {
+      if (requireAuth && !currentUser) {
+        navigate("/login", { state: { from: location }, replace: true });
+      } else if (currentUser && ["/login", "/signup"].includes(location.pathname)) {
+        navigate("/", { replace: true });
+      }
+    }
+  }, [currentUser, loading, location, navigate, requireAuth]);
+
+  // If still loading, show spinner
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <NavBar />
+        <main className="flex-1 container py-8">
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        </main>
+      </div>
+    );
   }
 
-  // If user is authenticated and trying to access login/signup, redirect to home
-  if (currentUser && ["/login", "/signup"].includes(location.pathname)) {
-    return <Navigate to="/" replace />;
+  // If authentication is required but user is not authenticated, render nothing (handled by useEffect)
+  if (requireAuth && !currentUser) {
+    return null;
   }
 
   return (
     <div className="flex flex-col min-h-screen">
       <NavBar />
       <main className="flex-1 container py-8">
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-          </div>
-        ) : (
-          children
-        )}
+        {children}
       </main>
     </div>
   );
