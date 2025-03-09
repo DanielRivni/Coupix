@@ -3,6 +3,7 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import { Coupon } from "@/lib/types";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 
 interface CouponContextType {
   coupons: Coupon[];
@@ -24,65 +25,53 @@ export const useCoupons = () => {
   return context;
 };
 
-const COUPONS_STORAGE_KEY = "coupix_coupons";
-
 export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const { currentUser } = useAuth();
 
   useEffect(() => {
-    loadCoupons();
+    if (currentUser) {
+      loadCoupons();
+    } else {
+      setCoupons([]);
+      setLoading(false);
+    }
   }, [currentUser]);
 
-  const loadCoupons = () => {
+  const loadCoupons = async () => {
+    if (!currentUser) return;
+    
     setLoading(true);
     try {
-      const storedCoupons = localStorage.getItem(COUPONS_STORAGE_KEY);
-      let parsedCoupons: Record<string, Coupon> = storedCoupons ? JSON.parse(storedCoupons) : {};
+      const { data, error } = await supabase
+        .from('coupons')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
       
-      // Parse date strings back to Date objects
-      Object.values(parsedCoupons).forEach(coupon => {
-        if (coupon.expiryDate) {
-          coupon.expiryDate = new Date(coupon.expiryDate);
-        }
-        coupon.createdAt = new Date(coupon.createdAt);
-      });
-
-      // Filter coupons by current user
-      if (currentUser) {
-        const userCoupons = Object.values(parsedCoupons).filter(
-          coupon => coupon.userId === currentUser.id
-        );
-        setCoupons(userCoupons);
-      } else {
-        setCoupons([]);
-      }
+      if (error) throw error;
+      
+      // Transform Supabase data to match our Coupon type
+      const formattedCoupons: Coupon[] = data.map((coupon: any) => ({
+        id: coupon.id,
+        userId: coupon.user_id,
+        store: coupon.store,
+        amount: String(coupon.amount), // Convert to string to match our type
+        description: coupon.description || '',
+        link: coupon.link || '',
+        image: coupon.image_url || '',
+        expiryDate: coupon.expiry_date ? new Date(coupon.expiry_date) : null,
+        isRedeemed: coupon.is_redeemed,
+        createdAt: new Date(coupon.created_at)
+      }));
+      
+      setCoupons(formattedCoupons);
     } catch (error) {
       console.error("Error loading coupons:", error);
       toast.error("Failed to load coupons");
-      setCoupons([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const saveCoupons = (updatedCoupons: Coupon[]) => {
-    try {
-      // Get all coupons from storage
-      const storedCoupons = localStorage.getItem(COUPONS_STORAGE_KEY);
-      let allCoupons: Record<string, Coupon> = storedCoupons ? JSON.parse(storedCoupons) : {};
-      
-      // Update the coupons for the current user
-      updatedCoupons.forEach(coupon => {
-        allCoupons[coupon.id] = coupon;
-      });
-      
-      localStorage.setItem(COUPONS_STORAGE_KEY, JSON.stringify(allCoupons));
-      return true;
-    } catch (error) {
-      console.error("Error saving coupons:", error);
-      return false;
     }
   };
 
@@ -95,22 +84,46 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       throw new Error("You must be logged in to create a coupon");
     }
 
-    const newCoupon: Coupon = {
-      id: `coupon_${Date.now()}`,
-      userId: currentUser.id,
-      ...couponData,
-      isRedeemed: false,
-      createdAt: new Date(),
-    };
-
-    const updatedCoupons = [...coupons, newCoupon];
-    setCoupons(updatedCoupons);
-    
-    if (saveCoupons(updatedCoupons)) {
+    try {
+      // Convert to Supabase format
+      const { data, error } = await supabase
+        .from('coupons')
+        .insert({
+          user_id: currentUser.id,
+          store: couponData.store,
+          amount: parseInt(couponData.amount) || 0,
+          description: couponData.description,
+          link: couponData.link,
+          image_url: couponData.image,
+          expiry_date: couponData.expiryDate,
+          is_redeemed: false
+        })
+        .select('*')
+        .single();
+      
+      if (error) throw error;
+      
+      // Convert back to our Coupon type
+      const newCoupon: Coupon = {
+        id: data.id,
+        userId: data.user_id,
+        store: data.store,
+        amount: String(data.amount),
+        description: data.description || '',
+        link: data.link || '',
+        image: data.image_url || '',
+        expiryDate: data.expiry_date ? new Date(data.expiry_date) : null,
+        isRedeemed: data.is_redeemed,
+        createdAt: new Date(data.created_at)
+      };
+      
+      setCoupons(prevCoupons => [newCoupon, ...prevCoupons]);
       toast.success("Coupon created successfully");
       return newCoupon;
-    } else {
-      throw new Error("Failed to save coupon");
+    } catch (error: any) {
+      console.error("Error creating coupon:", error);
+      toast.error(error.message || "Failed to create coupon");
+      throw error;
     }
   };
 
@@ -119,25 +132,57 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       throw new Error("You must be logged in to update a coupon");
     }
 
-    const couponIndex = coupons.findIndex(c => c.id === id);
-    if (couponIndex === -1) {
-      throw new Error("Coupon not found");
-    }
-
-    const updatedCoupon = {
-      ...coupons[couponIndex],
-      ...couponData,
-    };
-
-    const updatedCoupons = [...coupons];
-    updatedCoupons[couponIndex] = updatedCoupon;
-    setCoupons(updatedCoupons);
-    
-    if (saveCoupons(updatedCoupons)) {
+    try {
+      // Prepare data for Supabase
+      const updateData: any = {};
+      
+      if (couponData.store !== undefined) updateData.store = couponData.store;
+      if (couponData.amount !== undefined) updateData.amount = parseInt(couponData.amount) || 0;
+      if (couponData.description !== undefined) updateData.description = couponData.description;
+      if (couponData.link !== undefined) updateData.link = couponData.link;
+      if (couponData.image !== undefined) updateData.image_url = couponData.image;
+      if (couponData.expiryDate !== undefined) updateData.expiry_date = couponData.expiryDate;
+      if (couponData.isRedeemed !== undefined) updateData.is_redeemed = couponData.isRedeemed;
+      
+      // Add updated_at timestamp
+      updateData.updated_at = new Date();
+      
+      const { data, error } = await supabase
+        .from('coupons')
+        .update(updateData)
+        .eq('id', id)
+        .eq('user_id', currentUser.id)
+        .select('*')
+        .single();
+      
+      if (error) throw error;
+      
+      // Convert back to our Coupon type
+      const updatedCoupon: Coupon = {
+        id: data.id,
+        userId: data.user_id,
+        store: data.store,
+        amount: String(data.amount),
+        description: data.description || '',
+        link: data.link || '',
+        image: data.image_url || '',
+        expiryDate: data.expiry_date ? new Date(data.expiry_date) : null,
+        isRedeemed: data.is_redeemed,
+        createdAt: new Date(data.created_at)
+      };
+      
+      setCoupons(prevCoupons => 
+        prevCoupons.map(coupon => 
+          coupon.id === id ? updatedCoupon : coupon
+        )
+      );
+      
       toast.success("Coupon updated successfully");
       return updatedCoupon;
-    } else {
-      throw new Error("Failed to update coupon");
+    } catch (error: any) {
+      console.error("Error updating coupon:", error);
+      toast.error(error.message || "Failed to update coupon");
+      throw error;
     }
   };
 
@@ -146,18 +191,22 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       throw new Error("You must be logged in to delete a coupon");
     }
 
-    const updatedCoupons = coupons.filter(coupon => coupon.id !== id);
-    setCoupons(updatedCoupons);
-    
-    // Get all coupons
-    const storedCoupons = localStorage.getItem(COUPONS_STORAGE_KEY);
-    if (storedCoupons) {
-      const allCoupons: Record<string, Coupon> = JSON.parse(storedCoupons);
-      delete allCoupons[id];
-      localStorage.setItem(COUPONS_STORAGE_KEY, JSON.stringify(allCoupons));
+    try {
+      const { error } = await supabase
+        .from('coupons')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', currentUser.id);
+      
+      if (error) throw error;
+      
+      setCoupons(prevCoupons => prevCoupons.filter(coupon => coupon.id !== id));
+      toast.success("Coupon deleted successfully");
+    } catch (error: any) {
+      console.error("Error deleting coupon:", error);
+      toast.error(error.message || "Failed to delete coupon");
+      throw error;
     }
-    
-    toast.success("Coupon deleted successfully");
   };
 
   const redeemCoupon = async (id: string) => {
@@ -165,25 +214,43 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       throw new Error("You must be logged in to redeem a coupon");
     }
 
-    const couponIndex = coupons.findIndex(c => c.id === id);
-    if (couponIndex === -1) {
-      throw new Error("Coupon not found");
-    }
-
-    const updatedCoupon = {
-      ...coupons[couponIndex],
-      isRedeemed: true,
-    };
-
-    const updatedCoupons = [...coupons];
-    updatedCoupons[couponIndex] = updatedCoupon;
-    setCoupons(updatedCoupons);
-    
-    if (saveCoupons(updatedCoupons)) {
+    try {
+      const { data, error } = await supabase
+        .from('coupons')
+        .update({ is_redeemed: true, updated_at: new Date() })
+        .eq('id', id)
+        .eq('user_id', currentUser.id)
+        .select('*')
+        .single();
+      
+      if (error) throw error;
+      
+      // Convert back to our Coupon type
+      const updatedCoupon: Coupon = {
+        id: data.id,
+        userId: data.user_id,
+        store: data.store,
+        amount: String(data.amount),
+        description: data.description || '',
+        link: data.link || '',
+        image: data.image_url || '',
+        expiryDate: data.expiry_date ? new Date(data.expiry_date) : null,
+        isRedeemed: data.is_redeemed,
+        createdAt: new Date(data.created_at)
+      };
+      
+      setCoupons(prevCoupons => 
+        prevCoupons.map(coupon => 
+          coupon.id === id ? updatedCoupon : coupon
+        )
+      );
+      
       toast.success("Coupon marked as redeemed");
       return updatedCoupon;
-    } else {
-      throw new Error("Failed to redeem coupon");
+    } catch (error: any) {
+      console.error("Error redeeming coupon:", error);
+      toast.error(error.message || "Failed to redeem coupon");
+      throw error;
     }
   };
 

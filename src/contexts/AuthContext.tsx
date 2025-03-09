@@ -2,19 +2,21 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
+import { Session, User, AuthError } from "@supabase/supabase-js";
 
-export interface User {
+export interface Profile {
   id: string;
   email: string;
   name: string;
 }
 
 interface AuthContextType {
-  currentUser: User | null;
+  currentUser: Profile | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   deleteAccount: () => Promise<void>;
 }
@@ -29,61 +31,87 @@ export const useAuth = () => {
   return context;
 };
 
-// Mock user database for demo purposes
-const USERS_STORAGE_KEY = "coupix_users";
-const CURRENT_USER_KEY = "coupix_current_user";
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Initialize auth state
   useEffect(() => {
-    // Check for logged in user on initial load
-    const savedUser = localStorage.getItem(CURRENT_USER_KEY);
-    if (savedUser) {
-      setCurrentUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
+    const initializeAuth = async () => {
+      setLoading(true);
+      
+      // Check current session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await updateUserData(session.user);
+      }
+      
+      // Listen for auth changes
+      const { data: { subscription } } = await supabase.auth.onAuthStateChange(
+        async (_event, session) => {
+          if (session) {
+            await updateUserData(session.user);
+          } else {
+            setCurrentUser(null);
+          }
+          setLoading(false);
+        }
+      );
+
+      setLoading(false);
+      
+      // Cleanup function
+      return () => {
+        subscription.unsubscribe();
+      };
+    };
+
+    initializeAuth();
   }, []);
 
-  // Helper to get users from localStorage
-  const getUsers = (): Record<string, { id: string; email: string; password: string; name: string }> => {
-    const users = localStorage.getItem(USERS_STORAGE_KEY);
-    return users ? JSON.parse(users) : {};
-  };
-
-  // Helper to save users to localStorage
-  const saveUsers = (users: Record<string, { id: string; email: string; password: string; name: string }>) => {
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+  // Helper function to get profile data
+  const updateUserData = async (user: User) => {
+    if (!user) return;
+    
+    try {
+      // Get profile data from profiles table
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, name, email')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) {
+        console.error("Error fetching profile:", error);
+        return;
+      }
+      
+      if (data) {
+        setCurrentUser({
+          id: data.id,
+          name: data.name,
+          email: data.email,
+        });
+      }
+    } catch (error) {
+      console.error("Error updating user data:", error);
+    }
   };
 
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
-      const users = getUsers();
-      const userRecord = Object.values(users).find(user => user.email === email);
-
-      if (!userRecord) {
-        throw new Error("User not found");
-      }
-
-      if (userRecord.password !== password) {
-        throw new Error("Invalid password");
-      }
-
-      const user: User = {
-        id: userRecord.id,
-        email: userRecord.email,
-        name: userRecord.name,
-      };
-
-      setCurrentUser(user);
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (error) throw error;
+      
       toast.success("Login successful");
       navigate("/");
     } catch (error: any) {
-      toast.error(error.message || "Login failed");
+      const authError = error as AuthError;
+      console.error("Login error:", authError);
+      toast.error(authError.message || "Login failed");
       throw error;
     } finally {
       setLoading(false);
@@ -93,92 +121,95 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async (email: string, password: string, name: string) => {
     try {
       setLoading(true);
-      const users = getUsers();
-
-      // Check if email already exists
-      if (Object.values(users).some(user => user.email === email)) {
-        throw new Error("Email already in use");
-      }
-
-      const id = `user_${Date.now()}`;
-      users[id] = { id, email, password, name };
-      saveUsers(users);
-
-      const user: User = { id, email, name };
-      setCurrentUser(user);
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-      toast.success("Account created successfully");
-      navigate("/");
+      
+      // Create the user in Supabase Auth
+      const { error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: { name }
+        }
+      });
+      
+      if (error) throw error;
+      
+      toast.success("Account created successfully. You can now log in.");
+      navigate("/login");
     } catch (error: any) {
-      toast.error(error.message || "Signup failed");
+      const authError = error as AuthError;
+      console.error("Signup error:", authError);
+      toast.error(authError.message || "Signup failed");
       throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const logout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem(CURRENT_USER_KEY);
-    navigate("/login");
-    toast.success("Logged out successfully");
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setCurrentUser(null);
+      toast.success("Logged out successfully");
+      navigate("/login");
+    } catch (error: any) {
+      toast.error("Logout failed");
+      console.error("Logout error:", error);
+    }
   };
 
   const changePassword = async (currentPassword: string, newPassword: string) => {
     try {
-      if (!currentUser) {
-        throw new Error("Not authenticated");
-      }
-
-      const users = getUsers();
-      const userRecord = Object.values(users).find(user => user.id === currentUser.id);
-
-      if (!userRecord) {
-        throw new Error("User not found");
-      }
-
-      if (userRecord.password !== currentPassword) {
+      setLoading(true);
+      
+      // First, verify current password by trying to sign in with it
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email: currentUser?.email || '',
+        password: currentPassword
+      });
+      
+      if (verifyError) {
         throw new Error("Current password is incorrect");
       }
-
-      userRecord.password = newPassword;
-      saveUsers(users);
+      
+      // Change password
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      
+      if (error) throw error;
+      
       toast.success("Password updated successfully");
     } catch (error: any) {
       toast.error(error.message || "Password change failed");
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const deleteAccount = async () => {
     try {
+      setLoading(true);
+      
       if (!currentUser) {
-        throw new Error("Not authenticated");
+        throw new Error("No user logged in");
       }
-
-      const users = getUsers();
-      if (users[currentUser.id]) {
-        delete users[currentUser.id];
-        saveUsers(users);
-      }
-
-      // Also delete user's coupons
-      const allCoupons = JSON.parse(localStorage.getItem("coupix_coupons") || "{}");
-      const updatedCoupons = Object.entries(allCoupons).reduce((acc, [id, coupon]: [string, any]) => {
-        if (coupon.userId !== currentUser.id) {
-          acc[id] = coupon;
-        }
-        return acc;
-      }, {} as Record<string, any>);
-      localStorage.setItem("coupix_coupons", JSON.stringify(updatedCoupons));
-
+      
+      // Delete the user's account
+      // This will cascade to profiles due to our DB setup
+      const { error } = await supabase.auth.admin.deleteUser(
+        currentUser.id
+      );
+      
+      if (error) throw error;
+      
+      await supabase.auth.signOut();
       setCurrentUser(null);
-      localStorage.removeItem(CURRENT_USER_KEY);
-      navigate("/login");
       toast.success("Account deleted successfully");
+      navigate("/login");
     } catch (error: any) {
       toast.error(error.message || "Account deletion failed");
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
