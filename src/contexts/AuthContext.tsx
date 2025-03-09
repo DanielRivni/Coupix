@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -80,10 +79,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from('profiles')
         .select('id, name, email')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
       
       if (error) {
         console.error("Error fetching profile:", error);
+        // Set basic user info from auth even if profile fetch fails
+        setCurrentUser({
+          id: user.id,
+          name: user.user_metadata?.name || 'User',
+          email: user.email || '',
+        });
         return;
       }
       
@@ -93,9 +98,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: data.name,
           email: data.email,
         });
+      } else {
+        // No profile found, use auth data
+        setCurrentUser({
+          id: user.id,
+          name: user.user_metadata?.name || 'User',
+          email: user.email || '',
+        });
       }
     } catch (error) {
       console.error("Error updating user data:", error);
+      // Fallback to basic user data
+      setCurrentUser({
+        id: user.id,
+        name: user.user_metadata?.name || 'User',
+        email: user.email || '',
+      });
     }
   };
 
@@ -107,7 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       toast.success("Login successful");
-      navigate("/");
+      // Navigate is handled in Layout component for consistency
     } catch (error: any) {
       const authError = error as AuthError;
       console.error("Login error:", authError);

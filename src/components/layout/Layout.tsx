@@ -18,8 +18,11 @@ const Layout = ({ children, requireAuth = false }: LayoutProps) => {
   useEffect(() => {
     if (!loading) {
       if (requireAuth && !currentUser) {
+        // If authentication is required but user is not logged in, redirect to login
         navigate("/login", { state: { from: location }, replace: true });
       } else if (currentUser && ["/login", "/signup"].includes(location.pathname)) {
+        // If user is logged in and tries to access login or signup pages, redirect to home
+        console.log("User is logged in, redirecting to home");
         navigate("/", { replace: true });
       }
     }

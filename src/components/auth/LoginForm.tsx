@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -35,7 +34,8 @@ const LoginForm = () => {
     try {
       await login(data.email, data.password);
       // Explicitly navigate to home page after successful login
-      navigate("/");
+      console.log("Login successful, navigating to home");
+      navigate("/", { replace: true });
     } catch (error) {
       // Error is handled in the AuthContext
       console.error("Login failed", error);
