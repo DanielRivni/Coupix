@@ -1,11 +1,10 @@
-
 import { useState, useEffect, ChangeEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Link2, Upload, File } from "lucide-react";
+import { CalendarIcon, Link2, Upload } from "lucide-react";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -35,7 +34,7 @@ type FormData = z.infer<typeof formSchema>;
 
 const CouponForm = () => {
   const { createCoupon, updateCoupon, getCoupon } = useCoupons();
-  const { ensureUserProfile } = useAuth();
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEditing = Boolean(id);
@@ -58,33 +57,6 @@ const CouponForm = () => {
       expiryDate: null,
     },
   });
-
-  // Ensure storage bucket exists
-  useEffect(() => {
-    const checkBucket = async () => {
-      try {
-        // Try to get the bucket info to see if it exists
-        const { data, error } = await supabase.storage.getBucket('coupon-images');
-        if (error) {
-          console.log("Bucket may not exist, trying to create it:", error);
-          // Try to create the bucket if it doesn't exist
-          const { error: createError } = await supabase.storage.createBucket('coupon-images', {
-            public: true,
-            fileSizeLimit: 2097152, // 2MB in bytes
-          });
-          if (createError) {
-            console.error("Failed to create bucket:", createError);
-          } else {
-            console.log("Bucket created successfully");
-          }
-        }
-      } catch (error) {
-        console.error("Error checking bucket:", error);
-      }
-    };
-
-    checkBucket();
-  }, []);
 
   // Handle file selection for image upload
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -110,13 +82,10 @@ const CouponForm = () => {
 
   // Upload image to Supabase storage
   const uploadImage = async (): Promise<string | null> => {
-    if (!imageFile) return null;
+    if (!imageFile || !currentUser) return null;
     
     try {
       setIsUploading(true);
-      
-      // Ensure user profile exists before uploading
-      await ensureUserProfile();
       
       // Generate a unique file name
       const fileExt = imageFile.name.split('.').pop();
@@ -183,11 +152,14 @@ const CouponForm = () => {
   }, [isEditing, id, getCoupon, form, navigate]);
 
   const onSubmit = async (data: FormData) => {
+    if (!currentUser) {
+      toast.error("You must be logged in to create coupons");
+      navigate("/login");
+      return;
+    }
+    
     try {
       setIsUploading(true);
-
-      // Ensure user profile exists before saving coupon
-      await ensureUserProfile();
       
       // Determine actual store and amount values
       const finalStore = data.store === "Other" ? data.customStore! : data.store;

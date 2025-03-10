@@ -27,16 +27,11 @@ export const useCoupons = () => {
 export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
-  const { currentUser, ensureUserProfile } = useAuth();
+  const { currentUser } = useAuth();
 
   useEffect(() => {
     if (currentUser) {
-      ensureUserProfile()
-        .then(() => loadCoupons())
-        .catch((error) => {
-          console.error("Error ensuring user profile:", error);
-          setLoading(false);
-        });
+      loadCoupons();
     } else {
       setCoupons([]);
       setLoading(false);
@@ -95,9 +90,6 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     try {
-      // Ensure profile exists before trying to create a coupon
-      await ensureUserProfile();
-      
       console.log("Creating coupon:", couponData);
       
       // Convert to Supabase format

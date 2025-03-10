@@ -84,8 +84,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         console.error("Error fetching profile:", error);
-        // Try to ensure a profile exists
-        await createUserProfile(user);
+        // Set user data from auth data
+        setCurrentUser({
+          id: user.id,
+          name: user.user_metadata?.name || 'User',
+          email: user.email || '',
+        });
         return;
       }
       
@@ -96,47 +100,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: data.email,
         });
       } else {
-        // No profile found, create one
-        await createUserProfile(user);
+        // No profile found, set user from auth
+        setCurrentUser({
+          id: user.id,
+          name: user.user_metadata?.name || 'User',
+          email: user.email || '',
+        });
       }
     } catch (error) {
       console.error("Error updating user data:", error);
       // Fallback to basic user data
-      setCurrentUser({
-        id: user.id,
-        name: user.user_metadata?.name || 'User',
-        email: user.email || '',
-      });
-    }
-  };
-
-  // Create a user profile if it doesn't exist
-  const createUserProfile = async (user: User) => {
-    try {
-      const { error: insertError } = await supabase
-        .from('profiles')
-        .insert({
-          id: user.id,
-          email: user.email || '',
-          name: user.user_metadata?.name || 'User'
-        });
-      
-      if (insertError) {
-        console.error("Error creating profile:", insertError);
-        throw insertError;
-      }
-      
-      // Set user data after creating profile
-      setCurrentUser({
-        id: user.id,
-        name: user.user_metadata?.name || 'User',
-        email: user.email || '',
-      });
-      
-      console.log("Profile created successfully for user:", user.id);
-    } catch (error) {
-      console.error("Failed to create profile:", error);
-      // Still set basic user data even if profile creation fails
       setCurrentUser({
         id: user.id,
         name: user.user_metadata?.name || 'User',
@@ -159,32 +132,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         console.error("Error checking for profile:", error);
-        throw error;
+        return;
       }
       
       if (!data) {
         console.log("Profile not found, creating one for user:", currentUser.id);
         
         // Create profile if it doesn't exist
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            id: currentUser.id,
-            email: currentUser.email || '',
-            name: currentUser.name || 'User'
-          });
+        const { error: insertError } = await supabase.auth.admin.updateUserById(
+          currentUser.id,
+          { user_metadata: { name: currentUser.name } }
+        );
         
         if (insertError) {
-          console.error("Error creating profile:", insertError);
-          throw insertError;
+          console.error("Error updating user metadata:", insertError);
         }
-        
-        console.log("Profile created successfully");
       }
     } catch (error) {
       console.error("Error in ensureUserProfile:", error);
       toast.error("Failed to set up user profile");
-      throw error;
     }
   };
 
