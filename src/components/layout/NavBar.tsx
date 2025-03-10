@@ -13,13 +13,6 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 const NavBar = () => {
   const { currentUser, logout } = useAuth();
@@ -42,7 +35,7 @@ const NavBar = () => {
         <div className="flex items-center gap-2">
           <Link 
             to="/" 
-            className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent"
+            className="text-xl font-bold bg-gradient-to-r from-blue-500 to-blue-700 bg-clip-text text-transparent"
           >
             Coupix
           </Link>
@@ -81,7 +74,7 @@ const NavBar = () => {
                 <Button
                   variant="ghost"
                   onClick={handleLogout}
-                  className="flex items-center text-destructive hover:text-destructive"
+                  className="flex items-center"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   Logout
@@ -117,7 +110,7 @@ const NavBar = () => {
                     <SheetClose asChild>
                       <Button
                         variant="ghost"
-                        className="justify-start text-destructive hover:text-destructive"
+                        className="justify-start"
                         onClick={handleLogout}
                       >
                         <LogOut className="mr-2 h-4 w-4" />

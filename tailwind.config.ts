@@ -63,10 +63,10 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				// Custom Coupix colors
+				// Custom Coupix colors (updated to blue)
 				coupix: {
-					primary: '#8B5CF6',
-					secondary: '#D946EF',
+					primary: '#2563EB',
+					secondary: '#60A5FA',
 					accent: '#F97316',
 					background: '#F8FAFC',
 					dark: '#1A1F2C',

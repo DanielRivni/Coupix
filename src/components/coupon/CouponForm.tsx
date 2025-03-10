@@ -1,11 +1,11 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, ChangeEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Link2 } from "lucide-react";
+import { CalendarIcon, Link2, Upload, File } from "lucide-react";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useCoupons } from "@/contexts/CouponContext";
 import { Coupon, StoreOptions, AmountOptions } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 
 const formSchema = z.object({
   store: z.string().min(1, "Store is required"),
@@ -25,7 +27,6 @@ const formSchema = z.object({
   customAmount: z.string().optional(),
   description: z.string().optional(),
   link: z.string().url().optional().or(z.literal("")),
-  image: z.string().optional(),
   expiryDate: z.date().optional().nullable(),
 });
 
@@ -39,6 +40,9 @@ const CouponForm = () => {
   
   const [showCustomStore, setShowCustomStore] = useState(false);
   const [showCustomAmount, setShowCustomAmount] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -49,10 +53,78 @@ const CouponForm = () => {
       customAmount: "",
       description: "",
       link: "",
-      image: "",
       expiryDate: null,
     },
   });
+
+  // Handle file selection for image upload
+  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      // File size validation (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error("Image size exceeds 2MB limit");
+        return;
+      }
+      
+      setImageFile(file);
+      
+      // Create preview URL
+      const objectUrl = URL.createObjectURL(file);
+      setImagePreview(objectUrl);
+      
+      // Clean up preview URL when component unmounts
+      return () => URL.revokeObjectURL(objectUrl);
+    }
+  };
+
+  // Upload image to Supabase storage
+  const uploadImage = async (): Promise<string | null> => {
+    if (!imageFile) return null;
+    
+    try {
+      setIsUploading(true);
+      
+      // Check if coupon-images bucket exists, create if not
+      const { data: buckets } = await supabase.storage.getBucket('coupon-images');
+      if (!buckets) {
+        await supabase.storage.createBucket('coupon-images', {
+          public: true,
+          fileSizeLimit: 2097152, // 2MB in bytes
+        });
+      }
+      
+      // Generate a unique file name
+      const fileExt = imageFile.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      
+      // Upload the file
+      const { data, error } = await supabase.storage
+        .from('coupon-images')
+        .upload(`public/${fileName}`, imageFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Get public URL
+      const { data: publicUrl } = supabase.storage
+        .from('coupon-images')
+        .getPublicUrl(`public/${fileName}`);
+      
+      return publicUrl.publicUrl;
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error("Failed to upload image");
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   // Load coupon data if editing
   useEffect(() => {
@@ -66,6 +138,11 @@ const CouponForm = () => {
         setShowCustomStore(isCustomStore);
         setShowCustomAmount(isCustomAmount);
         
+        // Set image preview if available
+        if (coupon.image) {
+          setImagePreview(coupon.image);
+        }
+        
         form.reset({
           store: isCustomStore ? "Other" : coupon.store,
           customStore: isCustomStore ? coupon.store : "",
@@ -73,7 +150,6 @@ const CouponForm = () => {
           customAmount: isCustomAmount ? coupon.amount : "",
           description: coupon.description || "",
           link: coupon.link || "",
-          image: coupon.image || "",
           expiryDate: coupon.expiryDate,
         });
       } else {
@@ -84,28 +160,41 @@ const CouponForm = () => {
 
   const onSubmit = async (data: FormData) => {
     try {
+      setIsUploading(true);
+      
       // Determine actual store and amount values
       const finalStore = data.store === "Other" ? data.customStore! : data.store;
       const finalAmount = data.amount === "Other" ? data.customAmount! : data.amount;
+      
+      // Upload image if a new one was selected
+      let imageUrl = imagePreview;
+      if (imageFile) {
+        imageUrl = await uploadImage();
+      }
       
       const couponData = {
         store: finalStore,
         amount: finalAmount,
         description: data.description,
         link: data.link,
-        image: data.image,
+        image: imageUrl,
         expiryDate: data.expiryDate,
       };
       
       if (isEditing && id) {
         await updateCoupon(id, couponData);
+        toast.success("Coupon updated successfully");
       } else {
         await createCoupon(couponData);
+        toast.success("Coupon created successfully");
       }
       
       navigate("/");
     } catch (error) {
       console.error("Failed to save coupon:", error);
+      toast.error("Failed to save coupon");
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -261,26 +350,51 @@ const CouponForm = () => {
               )}
             />
 
-            {/* Image URL */}
-            <FormField
-              control={form.control}
-              name="image"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Image URL</FormLabel>
-                  <FormControl>
+            {/* Image Upload - replacing Image URL */}
+            <div className="space-y-2">
+              <FormLabel>Coupon Image</FormLabel>
+              <div className="grid grid-cols-1 gap-4">
+                <div className="border border-input bg-background rounded-md px-3 py-2">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <div className="flex-shrink-0 bg-primary/10 p-2 rounded-md">
+                      <Upload className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">Click to upload</span> or drag and drop
+                      <p className="text-xs">SVG, PNG, JPG or GIF (max. 2MB)</p>
+                    </div>
                     <Input
-                      placeholder="https://example.com/image.jpg"
-                      {...field}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageChange}
                     />
-                  </FormControl>
-                  <FormDescription>
-                    Provide a URL to the coupon image
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                  </label>
+                </div>
+                
+                {imagePreview && (
+                  <div className="relative rounded-md overflow-hidden border border-input h-40">
+                    <img
+                      src={imagePreview}
+                      alt="Coupon preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      className="absolute top-2 right-2 bg-destructive text-destructive-foreground p-1 rounded-full shadow-sm"
+                      onClick={() => {
+                        setImageFile(null);
+                        setImagePreview(null);
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Expiry Date */}
             <FormField
@@ -335,8 +449,18 @@ const CouponForm = () => {
         <Button variant="outline" onClick={() => navigate("/")}>
           Cancel
         </Button>
-        <Button onClick={form.handleSubmit(onSubmit)}>
-          {isEditing ? "Save Changes" : "Create Coupon"}
+        <Button 
+          onClick={form.handleSubmit(onSubmit)}
+          disabled={isUploading}
+        >
+          {isUploading ? (
+            <>
+              <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></div>
+              {isEditing ? "Saving..." : "Creating..."}
+            </>
+          ) : (
+            isEditing ? "Save Changes" : "Create Coupon"
+          )}
         </Button>
       </CardFooter>
     </Card>
