@@ -32,12 +32,59 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   useEffect(() => {
     if (currentUser) {
-      loadCoupons();
+      ensureUserProfile()
+        .then(() => loadCoupons())
+        .catch((error) => {
+          console.error("Error ensuring user profile:", error);
+          setLoading(false);
+        });
     } else {
       setCoupons([]);
       setLoading(false);
     }
   }, [currentUser]);
+
+  // Ensure user profile exists in the profiles table
+  const ensureUserProfile = async () => {
+    if (!currentUser) return;
+    
+    try {
+      // Check if profile exists
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+      
+      if (profileError) {
+        console.error("Error checking for profile:", profileError);
+        throw profileError;
+      }
+      
+      if (!profile) {
+        console.log("Profile not found, creating one for user:", currentUser.id);
+        // Create profile if it doesn't exist
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: currentUser.id,
+            email: currentUser.email || '',
+            name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User'
+          });
+        
+        if (insertError) {
+          console.error("Error creating profile:", insertError);
+          throw insertError;
+        }
+        
+        console.log("Profile created successfully");
+      }
+    } catch (error) {
+      console.error("Error in ensureUserProfile:", error);
+      toast.error("Failed to set up user profile");
+      throw error;
+    }
+  };
 
   const loadCoupons = async () => {
     if (!currentUser) return;
@@ -91,6 +138,9 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     try {
+      // Ensure profile exists before trying to create a coupon
+      await ensureUserProfile();
+      
       console.log("Creating coupon:", couponData);
       
       // Convert to Supabase format
