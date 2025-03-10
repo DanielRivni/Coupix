@@ -44,6 +44,7 @@ const CouponForm = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -90,11 +91,22 @@ const CouponForm = () => {
       // Generate a unique file name
       const fileExt = imageFile.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `public/${fileName}`;
+      
+      // First make sure the bucket exists
+      const { error: bucketError } = await supabase.storage.createBucket('coupon-images', {
+        public: true,
+      });
+      
+      if (bucketError && bucketError.message !== "Bucket already exists") {
+        console.error("Error creating bucket before upload:", bucketError);
+        throw new Error("Failed to set up storage for image upload");
+      }
       
       // Upload the file
       const { data, error } = await supabase.storage
         .from('coupon-images')
-        .upload(`public/${fileName}`, imageFile, {
+        .upload(filePath, imageFile, {
           cacheControl: '3600',
           upsert: false
         });
@@ -107,7 +119,7 @@ const CouponForm = () => {
       // Get public URL
       const { data: publicUrl } = supabase.storage
         .from('coupon-images')
-        .getPublicUrl(`public/${fileName}`);
+        .getPublicUrl(filePath);
       
       return publicUrl.publicUrl;
     } catch (error) {
@@ -158,6 +170,8 @@ const CouponForm = () => {
       return;
     }
     
+    setFormError(null);
+    
     try {
       setIsUploading(true);
       
@@ -165,10 +179,25 @@ const CouponForm = () => {
       const finalStore = data.store === "Other" ? data.customStore! : data.store;
       const finalAmount = data.amount === "Other" ? data.customAmount! : data.amount;
       
+      if (data.store === "Other" && !data.customStore) {
+        setFormError("Custom store name is required");
+        return;
+      }
+      
+      if (data.amount === "Other" && !data.customAmount) {
+        setFormError("Custom amount is required");
+        return;
+      }
+      
       // Upload image if a new one was selected
       let imageUrl = imagePreview;
       if (imageFile) {
         imageUrl = await uploadImage();
+        if (!imageUrl && imageFile) {
+          // If upload failed but we have a file, stop the submission
+          toast.error("Image upload failed, please try again");
+          return;
+        }
       }
       
       const couponData = {
@@ -192,6 +221,7 @@ const CouponForm = () => {
     } catch (error) {
       console.error("Failed to save coupon:", error);
       toast.error("Failed to save coupon");
+      setFormError("Failed to save coupon. Please try again later.");
     } finally {
       setIsUploading(false);
     }
@@ -203,6 +233,11 @@ const CouponForm = () => {
         <CardTitle>{isEditing ? "Edit Coupon" : "Create New Coupon"}</CardTitle>
       </CardHeader>
       <CardContent>
+        {formError && (
+          <div className="bg-destructive/15 text-destructive p-3 rounded-md mb-4">
+            {formError}
+          </div>
+        )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
