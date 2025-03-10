@@ -69,7 +69,7 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           .insert({
             id: currentUser.id,
             email: currentUser.email || '',
-            name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User'
+            name: currentUser.name || 'User' // Fixed: Access name directly from currentUser
           });
         
         if (insertError) {
