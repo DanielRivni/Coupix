@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import { Coupon } from "@/lib/types";
@@ -28,7 +27,7 @@ export const useCoupons = () => {
 export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
-  const { currentUser } = useAuth();
+  const { currentUser, ensureUserProfile } = useAuth();
 
   useEffect(() => {
     if (currentUser) {
@@ -43,48 +42,6 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setLoading(false);
     }
   }, [currentUser]);
-
-  // Ensure user profile exists in the profiles table
-  const ensureUserProfile = async () => {
-    if (!currentUser) return;
-    
-    try {
-      // Check if profile exists
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', currentUser.id)
-        .maybeSingle();
-      
-      if (profileError) {
-        console.error("Error checking for profile:", profileError);
-        throw profileError;
-      }
-      
-      if (!profile) {
-        console.log("Profile not found, creating one for user:", currentUser.id);
-        // Create profile if it doesn't exist
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            id: currentUser.id,
-            email: currentUser.email || '',
-            name: currentUser.name || 'User' // Fixed: Access name directly from currentUser
-          });
-        
-        if (insertError) {
-          console.error("Error creating profile:", insertError);
-          throw insertError;
-        }
-        
-        console.log("Profile created successfully");
-      }
-    } catch (error) {
-      console.error("Error in ensureUserProfile:", error);
-      toast.error("Failed to set up user profile");
-      throw error;
-    }
-  };
 
   const loadCoupons = async () => {
     if (!currentUser) return;

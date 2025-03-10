@@ -19,6 +19,7 @@ import { Coupon, StoreOptions, AmountOptions } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 
 const formSchema = z.object({
   store: z.string().min(1, "Store is required"),
@@ -34,6 +35,7 @@ type FormData = z.infer<typeof formSchema>;
 
 const CouponForm = () => {
   const { createCoupon, updateCoupon, getCoupon } = useCoupons();
+  const { ensureUserProfile } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEditing = Boolean(id);
@@ -56,6 +58,33 @@ const CouponForm = () => {
       expiryDate: null,
     },
   });
+
+  // Ensure storage bucket exists
+  useEffect(() => {
+    const checkBucket = async () => {
+      try {
+        // Try to get the bucket info to see if it exists
+        const { data, error } = await supabase.storage.getBucket('coupon-images');
+        if (error) {
+          console.log("Bucket may not exist, trying to create it:", error);
+          // Try to create the bucket if it doesn't exist
+          const { error: createError } = await supabase.storage.createBucket('coupon-images', {
+            public: true,
+            fileSizeLimit: 2097152, // 2MB in bytes
+          });
+          if (createError) {
+            console.error("Failed to create bucket:", createError);
+          } else {
+            console.log("Bucket created successfully");
+          }
+        }
+      } catch (error) {
+        console.error("Error checking bucket:", error);
+      }
+    };
+
+    checkBucket();
+  }, []);
 
   // Handle file selection for image upload
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -86,14 +115,8 @@ const CouponForm = () => {
     try {
       setIsUploading(true);
       
-      // Check if coupon-images bucket exists, create if not
-      const { data: buckets } = await supabase.storage.getBucket('coupon-images');
-      if (!buckets) {
-        await supabase.storage.createBucket('coupon-images', {
-          public: true,
-          fileSizeLimit: 2097152, // 2MB in bytes
-        });
-      }
+      // Ensure user profile exists before uploading
+      await ensureUserProfile();
       
       // Generate a unique file name
       const fileExt = imageFile.name.split('.').pop();
@@ -108,6 +131,7 @@ const CouponForm = () => {
         });
       
       if (error) {
+        console.error("Upload error details:", error);
         throw error;
       }
       
@@ -161,6 +185,9 @@ const CouponForm = () => {
   const onSubmit = async (data: FormData) => {
     try {
       setIsUploading(true);
+
+      // Ensure user profile exists before saving coupon
+      await ensureUserProfile();
       
       // Determine actual store and amount values
       const finalStore = data.store === "Other" ? data.customStore! : data.store;
