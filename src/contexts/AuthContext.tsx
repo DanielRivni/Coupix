@@ -75,38 +75,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
     
     try {
-      // Get profile data from profiles table
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, name, email')
-        .eq('id', user.id)
-        .maybeSingle();
+      // Set user data from auth data (simplified approach)
+      setCurrentUser({
+        id: user.id,
+        name: user.user_metadata?.name || 'User',
+        email: user.email || '',
+      });
       
-      if (error) {
-        console.error("Error fetching profile:", error);
-        // Set user data from auth data
-        setCurrentUser({
-          id: user.id,
-          name: user.user_metadata?.name || 'User',
-          email: user.email || '',
-        });
-        return;
-      }
-      
-      if (data) {
-        setCurrentUser({
-          id: data.id,
-          name: data.name,
-          email: data.email,
-        });
-      } else {
-        // No profile found, set user from auth
-        setCurrentUser({
-          id: user.id,
-          name: user.user_metadata?.name || 'User',
-          email: user.email || '',
-        });
-      }
+      // We don't try to access the profiles table here
+      // to avoid RLS issues
     } catch (error) {
       console.error("Error updating user data:", error);
       // Fallback to basic user data
@@ -120,38 +97,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Public method to ensure a user profile exists
   const ensureUserProfile = async () => {
-    if (!currentUser) return;
-
-    try {
-      // Check if profile exists
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', currentUser.id)
-        .maybeSingle();
-      
-      if (error) {
-        console.error("Error checking for profile:", error);
-        return;
-      }
-      
-      if (!data) {
-        console.log("Profile not found, creating one for user:", currentUser.id);
-        
-        // Create profile if it doesn't exist
-        const { error: insertError } = await supabase.auth.admin.updateUserById(
-          currentUser.id,
-          { user_metadata: { name: currentUser.name } }
-        );
-        
-        if (insertError) {
-          console.error("Error updating user metadata:", insertError);
-        }
-      }
-    } catch (error) {
-      console.error("Error in ensureUserProfile:", error);
-      toast.error("Failed to set up user profile");
-    }
+    // This function is simplified to avoid RLS issues
+    // It's now a no-op but we keep it for backward compatibility
+    return Promise.resolve();
   };
 
   const login = async (email: string, password: string) => {
@@ -202,13 +150,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
       setCurrentUser(null);
       toast.success("Logged out successfully");
       navigate("/login");
     } catch (error: any) {
-      toast.error("Logout failed");
       console.error("Logout error:", error);
+      toast.error("Logout failed");
+      throw error;
     }
   };
 
@@ -248,20 +199,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error("No user logged in");
       }
       
-      // Delete the user's account
-      // This will cascade to profiles due to our DB setup
-      const { error } = await supabase.auth.admin.deleteUser(
-        currentUser.id
-      );
+      // We need to handle this differently since we can't use admin features
+      const { error } = await supabase.auth.signOut();
       
       if (error) throw error;
       
-      await supabase.auth.signOut();
       setCurrentUser(null);
-      toast.success("Account deleted successfully");
+      toast.success("You've been logged out. Contact support to delete your account.");
       navigate("/login");
     } catch (error: any) {
-      toast.error(error.message || "Account deletion failed");
+      toast.error(error.message || "Account operation failed");
       throw error;
     } finally {
       setLoading(false);

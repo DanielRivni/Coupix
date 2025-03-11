@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun, Menu, X, UserCircle, Home, LogOut } from "lucide-react";
+import { Moon, Sun, Menu, UserCircle, Home, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
@@ -13,6 +13,7 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
+import { toast } from "sonner";
 
 const NavBar = () => {
   const { currentUser, logout } = useAuth();
@@ -20,8 +21,14 @@ const NavBar = () => {
   const navigate = useNavigate();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    try {
+      await logout();
+      // Navigate is now handled by the logout function in AuthContext
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast.error("Failed to log out. Please try again.");
+    }
   };
 
   const navItems = [
@@ -133,8 +140,4 @@ const NavBar = () => {
           )}
         </div>
       </div>
-    </header>
-  );
-};
-
-export default NavBar;
+    

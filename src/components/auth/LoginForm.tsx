@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -20,6 +21,7 @@ type FormData = z.infer<typeof formSchema>;
 const LoginForm = () => {
   const { login, loading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const navigate = useNavigate();
   
   const form = useForm<FormData>({
@@ -31,14 +33,13 @@ const LoginForm = () => {
   });
 
   const onSubmit = async (data: FormData) => {
+    setLoginError(null);
     try {
       await login(data.email, data.password);
-      // Explicitly navigate to home page after successful login
-      console.log("Login successful, navigating to home");
-      navigate("/", { replace: true });
-    } catch (error) {
-      // Error is handled in the AuthContext
+      // Navigation is handled in the AuthContext
+    } catch (error: any) {
       console.error("Login failed", error);
+      setLoginError(error.message || "Login failed. Please check your credentials and try again.");
     }
   };
 
@@ -51,6 +52,11 @@ const LoginForm = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {loginError && (
+          <div className="bg-destructive/15 text-destructive p-3 rounded-md mb-4">
+            {loginError}
+          </div>
+        )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField

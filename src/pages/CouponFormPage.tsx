@@ -6,14 +6,21 @@ import CouponForm from "@/components/coupon/CouponForm";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const CouponFormPage = () => {
   const [bucketError, setBucketError] = useState(false);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   
   useEffect(() => {
-    // Instead of checking for bucket existence, let's try to create it if it doesn't exist
+    // Skip bucket creation if not logged in
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+    
     const ensureBucket = async () => {
       try {
         setLoading(true);
@@ -51,7 +58,7 @@ const CouponFormPage = () => {
     };
     
     ensureBucket();
-  }, []);
+  }, [currentUser]);
 
   const handleGoBack = () => {
     navigate("/");
