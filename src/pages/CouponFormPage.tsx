@@ -4,9 +4,8 @@ import { useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 import CouponForm from "@/components/coupon/CouponForm";
 import { supabase } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const CouponFormPage = () => {
   const [loading, setLoading] = useState(true);
@@ -20,23 +19,45 @@ const CouponFormPage = () => {
       return;
     }
     
-    // Just check if bucket exists, we don't need to create it here
-    // since we've done that with SQL migration
     const checkBucket = async () => {
       try {
         setLoading(true);
         
-        // Just check if we can access the bucket
-        const { data, error } = await supabase.storage.getBucket('coupon-images');
+        // Try to insert the user's profile if it doesn't exist
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', currentUser.id)
+          .single();
         
-        if (error) {
-          console.log("Error checking bucket:", error);
-          // We don't want to block the user here, just log the error
+        if (profileError && profileError.code === 'PGRST116') {
+          console.log("Profile doesn't exist, creating one");
+          
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: currentUser.id,
+              name: currentUser.user_metadata?.name || 'User',
+              email: currentUser.email
+            });
+          
+          if (insertError) {
+            console.error("Error creating profile:", insertError);
+            toast.error("Failed to set up your profile");
+          }
         }
         
-        console.log("Bucket exists:", data);
+        // Check if bucket exists
+        const { data: bucket, error: bucketError } = await supabase.storage
+          .getBucket('coupon-images');
+        
+        if (bucketError) {
+          console.error("Error checking bucket:", bucketError);
+          toast.error("Failed to set up storage for coupon images");
+        }
       } catch (error) {
         console.error("Unexpected error:", error);
+        toast.error("Something went wrong");
       } finally {
         setLoading(false);
       }
@@ -44,10 +65,6 @@ const CouponFormPage = () => {
     
     checkBucket();
   }, [currentUser]);
-
-  const handleGoBack = () => {
-    navigate("/");
-  };
 
   if (loading) {
     return (

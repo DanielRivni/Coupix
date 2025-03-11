@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import { Coupon } from "@/lib/types";
@@ -84,6 +85,45 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return coupons.find(coupon => coupon.id === id);
   };
 
+  // Helper function to ensure user profile exists
+  const ensureProfileExists = async () => {
+    if (!currentUser) return false;
+    
+    try {
+      // Check if profile exists
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', currentUser.id)
+        .single();
+      
+      if (error && error.code === 'PGRST116') {
+        // Profile doesn't exist, create it
+        console.log("Profile doesn't exist, creating one");
+        
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: currentUser.id,
+            name: currentUser.user_metadata?.name || 'User',
+            email: currentUser.email
+          });
+        
+        if (insertError) {
+          console.error("Error creating profile:", insertError);
+          return false;
+        }
+        
+        return true;
+      }
+      
+      return !!data; // Profile exists
+    } catch (error) {
+      console.error("Error checking/creating profile:", error);
+      return false;
+    }
+  };
+
   const createCoupon = async (couponData: Omit<Coupon, "id" | "userId" | "createdAt" | "isRedeemed">) => {
     if (!currentUser) {
       throw new Error("You must be logged in to create a coupon");
@@ -91,6 +131,13 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     try {
       console.log("Creating coupon:", couponData);
+      
+      // Ensure profile exists before creating coupon
+      const profileExists = await ensureProfileExists();
+      
+      if (!profileExists) {
+        throw new Error("Failed to create or verify user profile");
+      }
       
       // Convert to Supabase format
       const { data, error } = await supabase
