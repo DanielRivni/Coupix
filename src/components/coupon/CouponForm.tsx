@@ -59,12 +59,10 @@ const CouponForm = () => {
     },
   });
 
-  // Handle file selection for image upload
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
-      // File size validation (max 2MB)
       if (file.size > 2 * 1024 * 1024) {
         toast.error("Image size exceeds 2MB limit");
         return;
@@ -72,38 +70,23 @@ const CouponForm = () => {
       
       setImageFile(file);
       
-      // Create preview URL
       const objectUrl = URL.createObjectURL(file);
       setImagePreview(objectUrl);
       
-      // Clean up preview URL when component unmounts
       return () => URL.revokeObjectURL(objectUrl);
     }
   };
 
-  // Upload image to Supabase storage
   const uploadImage = async (): Promise<string | null> => {
     if (!imageFile || !currentUser) return null;
     
     try {
       setIsUploading(true);
       
-      // Generate a unique file name
       const fileExt = imageFile.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `public/${fileName}`;
+      const fileName = `${currentUser.id}_${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
       
-      // First make sure the bucket exists
-      const { error: bucketError } = await supabase.storage.createBucket('coupon-images', {
-        public: true,
-      });
-      
-      if (bucketError && bucketError.message !== "Bucket already exists") {
-        console.error("Error creating bucket before upload:", bucketError);
-        throw new Error("Failed to set up storage for image upload");
-      }
-      
-      // Upload the file
       const { data, error } = await supabase.storage
         .from('coupon-images')
         .upload(filePath, imageFile, {
@@ -116,7 +99,6 @@ const CouponForm = () => {
         throw error;
       }
       
-      // Get public URL
       const { data: publicUrl } = supabase.storage
         .from('coupon-images')
         .getPublicUrl(filePath);
@@ -131,19 +113,16 @@ const CouponForm = () => {
     }
   };
 
-  // Load coupon data if editing
   useEffect(() => {
     if (isEditing && id) {
       const coupon = getCoupon(id);
       if (coupon) {
-        // Check if it's a custom store or amount
         const isCustomStore = !StoreOptions.includes(coupon.store);
         const isCustomAmount = !AmountOptions.includes(coupon.amount);
         
         setShowCustomStore(isCustomStore);
         setShowCustomAmount(isCustomAmount);
         
-        // Set image preview if available
         if (coupon.image) {
           setImagePreview(coupon.image);
         }
@@ -175,7 +154,6 @@ const CouponForm = () => {
     try {
       setIsUploading(true);
       
-      // Determine actual store and amount values
       const finalStore = data.store === "Other" ? data.customStore! : data.store;
       const finalAmount = data.amount === "Other" ? data.customAmount! : data.amount;
       
@@ -189,12 +167,10 @@ const CouponForm = () => {
         return;
       }
       
-      // Upload image if a new one was selected
       let imageUrl = imagePreview;
       if (imageFile) {
         imageUrl = await uploadImage();
         if (!imageUrl && imageFile) {
-          // If upload failed but we have a file, stop the submission
           toast.error("Image upload failed, please try again");
           return;
         }
@@ -241,7 +217,6 @@ const CouponForm = () => {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Store Selection */}
               <div className="space-y-4">
                 <FormField
                   control={form.control}
@@ -292,7 +267,6 @@ const CouponForm = () => {
                 )}
               </div>
 
-              {/* Amount Selection */}
               <div className="space-y-4">
                 <FormField
                   control={form.control}
@@ -344,7 +318,6 @@ const CouponForm = () => {
               </div>
             </div>
 
-            {/* Description */}
             <FormField
               control={form.control}
               name="description"
@@ -363,7 +336,6 @@ const CouponForm = () => {
               )}
             />
 
-            {/* Link */}
             <FormField
               control={form.control}
               name="link"
@@ -384,7 +356,6 @@ const CouponForm = () => {
               )}
             />
 
-            {/* Image Upload - replacing Image URL */}
             <div className="space-y-2">
               <FormLabel>Coupon Image</FormLabel>
               <div className="grid grid-cols-1 gap-4">
@@ -430,7 +401,6 @@ const CouponForm = () => {
               </div>
             </div>
 
-            {/* Expiry Date */}
             <FormField
               control={form.control}
               name="expiryDate"
