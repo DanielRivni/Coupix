@@ -11,7 +11,7 @@ export interface Profile {
 }
 
 interface AuthContextType {
-  currentUser: Profile | null;
+  currentUser: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
@@ -32,7 +32,7 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -44,14 +44,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Check current session
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        await updateUserData(session.user);
+        setCurrentUser(session.user);
       }
       
       // Listen for auth changes
       const { data: { subscription } } = await supabase.auth.onAuthStateChange(
         async (_event, session) => {
           if (session) {
-            await updateUserData(session.user);
+            setCurrentUser(session.user);
           } else {
             setCurrentUser(null);
           }
@@ -70,36 +70,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initializeAuth();
   }, []);
 
-  // Helper function to get profile data
-  const updateUserData = async (user: User) => {
-    if (!user) return;
-    
-    try {
-      // Set user data from auth data (simplified approach)
-      setCurrentUser({
-        id: user.id,
-        name: user.user_metadata?.name || 'User',
-        email: user.email || '',
-      });
-      
-      // We don't try to access the profiles table here
-      // to avoid RLS issues
-    } catch (error) {
-      console.error("Error updating user data:", error);
-      // Fallback to basic user data
-      setCurrentUser({
-        id: user.id,
-        name: user.user_metadata?.name || 'User',
-        email: user.email || '',
-      });
-    }
-  };
-
   // Public method to ensure a user profile exists
   const ensureUserProfile = async () => {
-    // This function is simplified to avoid RLS issues
-    // It's now a no-op but we keep it for backward compatibility
-    return Promise.resolve();
+    if (!currentUser) return;
+    
+    try {
+      // Check if profile exists
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', currentUser.id)
+        .single();
+      
+      if (error && error.code === 'PGRST116') {
+        // Profile doesn't exist, create it
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: currentUser.id,
+            name: currentUser.user_metadata?.name || 'User',
+            email: currentUser.email || ''
+          });
+        
+        if (insertError) {
+          console.error("Error creating profile:", insertError);
+          toast.error("Failed to set up your profile");
+        }
+      }
+    } catch (error) {
+      console.error("Error ensuring user profile:", error);
+    }
   };
 
   const login = async (email: string, password: string) => {

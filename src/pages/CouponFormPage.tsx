@@ -10,61 +10,39 @@ import { toast } from "sonner";
 const CouponFormPage = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, ensureUserProfile } = useAuth();
   
   useEffect(() => {
-    // Skip bucket checking if not logged in
+    // Skip if not logged in
     if (!currentUser) {
       setLoading(false);
       return;
     }
     
-    const checkBucket = async () => {
+    const initPage = async () => {
       try {
         setLoading(true);
         
-        // Try to insert the user's profile if it doesn't exist
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', currentUser.id)
-          .single();
+        // Ensure user profile exists
+        await ensureUserProfile();
         
-        if (profileError && profileError.code === 'PGRST116') {
-          console.log("Profile doesn't exist, creating one");
-          
-          const { error: insertError } = await supabase
-            .from('profiles')
-            .insert({
-              id: currentUser.id,
-              name: currentUser.user_metadata?.name || 'User',
-              email: currentUser.email
-            });
-          
-          if (insertError) {
-            console.error("Error creating profile:", insertError);
-            toast.error("Failed to set up your profile");
-          }
-        }
-        
-        // Check if bucket exists
-        const { data: bucket, error: bucketError } = await supabase.storage
+        // Simply check if bucket exists
+        const { error } = await supabase.storage
           .getBucket('coupon-images');
         
-        if (bucketError) {
-          console.error("Error checking bucket:", bucketError);
-          toast.error("Failed to set up storage for coupon images");
+        if (error) {
+          console.error("Error checking storage bucket:", error);
+          toast.error("Storage setup issue - please try again later");
         }
       } catch (error) {
-        console.error("Unexpected error:", error);
-        toast.error("Something went wrong");
+        console.error("Initialization error:", error);
       } finally {
         setLoading(false);
       }
     };
     
-    checkBucket();
-  }, [currentUser]);
+    initPage();
+  }, [currentUser, ensureUserProfile]);
 
   if (loading) {
     return (
