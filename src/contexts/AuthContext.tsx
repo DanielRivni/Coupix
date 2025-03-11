@@ -84,6 +84,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error && error.code === 'PGRST116') {
         // Profile doesn't exist, create it
+        console.log("Creating new profile for user:", currentUser.id);
+        
         const { error: insertError } = await supabase
           .from('profiles')
           .insert({
@@ -95,10 +97,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (insertError) {
           console.error("Error creating profile:", insertError);
           toast.error("Failed to set up your profile");
+          return false;
         }
+        
+        return true;
       }
+      
+      return true;
     } catch (error) {
       console.error("Error ensuring user profile:", error);
+      return false;
     }
   };
 

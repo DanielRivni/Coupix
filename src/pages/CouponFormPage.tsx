@@ -24,14 +24,19 @@ const CouponFormPage = () => {
         setLoading(true);
         
         // Ensure user profile exists
-        await ensureUserProfile();
+        const profileCreated = await ensureUserProfile();
+        if (!profileCreated) {
+          console.error("Failed to ensure user profile");
+          // Continue anyway, maybe the profile already exists
+        }
         
-        // Simply check if bucket exists
-        const { error } = await supabase.storage
-          .getBucket('coupon-images');
+        // Check if bucket exists by listing objects (more reliable)
+        const { data, error } = await supabase.storage
+          .from('coupon-images')
+          .list();
         
         if (error) {
-          console.error("Error checking storage bucket:", error);
+          console.error("Error accessing storage bucket:", error);
           toast.error("Storage setup issue - please try again later");
         }
       } catch (error) {
