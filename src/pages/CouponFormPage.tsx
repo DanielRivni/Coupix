@@ -30,14 +30,20 @@ const CouponFormPage = () => {
           // Continue anyway, maybe the profile already exists
         }
         
-        // Check if bucket exists by listing objects (more reliable)
-        const { data, error } = await supabase.storage
-          .from('coupon-images')
-          .list();
-        
-        if (error) {
-          console.error("Error accessing storage bucket:", error);
-          toast.error("Storage setup issue - please try again later");
+        // Check if storage is accessible
+        try {
+          const { data, error } = await supabase.storage
+            .from('coupon-images')
+            .list('', { limit: 1 });
+          
+          if (error) {
+            console.error("Storage access error:", error);
+            toast.error("Storage access issue - please try again later");
+          } else {
+            console.log("Storage access successful");
+          }
+        } catch (storageError) {
+          console.error("Storage error:", storageError);
         }
       } catch (error) {
         console.error("Initialization error:", error);

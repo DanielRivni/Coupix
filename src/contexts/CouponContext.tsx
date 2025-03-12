@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import { Coupon } from "@/lib/types";
@@ -27,7 +28,7 @@ export const useCoupons = () => {
 export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
-  const { currentUser, ensureUserProfile } = useAuth();
+  const { currentUser } = useAuth();
 
   useEffect(() => {
     if (currentUser) {
@@ -43,6 +44,8 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     
     setLoading(true);
     try {
+      console.log("Loading coupons for user:", currentUser.id);
+      
       const { data, error } = await supabase
         .from('coupons')
         .select('*')
@@ -53,6 +56,8 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         console.error("Error loading coupons:", error);
         throw error;
       }
+      
+      console.log("Received coupons data:", data);
       
       // Transform Supabase data to match our Coupon type
       const formattedCoupons: Coupon[] = data.map((coupon: any) => ({
@@ -89,9 +94,6 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       console.log("Creating coupon:", couponData);
       
-      // Ensure user profile exists first
-      await ensureUserProfile();
-      
       // Convert to Supabase format
       const { data, error } = await supabase
         .from('coupons')
@@ -112,6 +114,8 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         console.error("Error from Supabase:", error);
         throw error;
       }
+      
+      console.log("Created coupon successfully:", data);
       
       // Convert back to our Coupon type
       const newCoupon: Coupon = {

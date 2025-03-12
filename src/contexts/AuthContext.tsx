@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -18,7 +19,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   deleteAccount: () => Promise<void>;
-  ensureUserProfile: () => Promise<void>;
+  ensureUserProfile: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -71,8 +72,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // Public method to ensure a user profile exists
-  const ensureUserProfile = async () => {
-    if (!currentUser) return;
+  const ensureUserProfile = async (): Promise<boolean> => {
+    if (!currentUser) return false;
     
     try {
       // Check if profile exists
