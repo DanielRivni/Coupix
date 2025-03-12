@@ -38,13 +38,17 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
   const isExpired = coupon.expiryDate ? new Date() > new Date(coupon.expiryDate) : false;
   
   const handleEdit = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent event bubbling
+    e.preventDefault();
+    e.stopPropagation();
     console.log("Edit button clicked for coupon:", coupon.id);
     navigate(`/edit/${coupon.id}`);
   };
   
   const handleDelete = async (e?: React.MouseEvent) => {
-    e?.stopPropagation(); // Prevent event bubbling
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     console.log("Delete coupon:", coupon.id);
     try {
       await deleteCoupon(coupon.id);
@@ -55,7 +59,10 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
   };
   
   const handleRedeem = async (e?: React.MouseEvent) => {
-    e?.stopPropagation(); // Prevent event bubbling
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     console.log("Redeeming coupon:", coupon.id);
     try {
       await redeemCoupon(coupon.id);
@@ -66,7 +73,8 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
   };
   
   const handleUse = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent event bubbling
+    e.preventDefault();
+    e.stopPropagation();
     console.log("Use coupon clicked:", coupon.id);
     
     if (coupon.image) {
@@ -77,18 +85,28 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
   };
   
   const openDeleteDialog = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent event bubbling
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("Opening delete dialog for coupon:", coupon.id);
     setDeleteDialogOpen(true);
   };
   
   const openRedeemDialog = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent event bubbling
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("Opening redeem dialog for coupon:", coupon.id);
     setRedeemDialogOpen(true);
+  };
+  
+  // Handle click on card itself - prevent default card click behavior
+  const handleCardClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
   };
   
   return (
     <>
-      <div className="coupon-card group">
+      <div className="coupon-card group" onClick={handleCardClick}>
         <div className="coupon-card-gradient" />
         
         {/* Status badges */}
@@ -187,7 +205,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
       
       {/* Delete confirmation dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Coupon</AlertDialogTitle>
             <AlertDialogDescription>
@@ -196,7 +214,13 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleDelete()} className="bg-destructive text-destructive-foreground">
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete();
+              }} 
+              className="bg-destructive text-destructive-foreground"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -205,7 +229,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
       
       {/* Redeem confirmation dialog */}
       <AlertDialog open={redeemDialogOpen} onOpenChange={setRedeemDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
             <AlertDialogTitle>Mark as Redeemed</AlertDialogTitle>
             <AlertDialogDescription>
@@ -214,7 +238,12 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleRedeem()}>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRedeem();
+              }}
+            >
               Mark as Redeemed
             </AlertDialogAction>
           </AlertDialogFooter>
