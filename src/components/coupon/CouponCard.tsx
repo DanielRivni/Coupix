@@ -37,26 +37,53 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
   
   const isExpired = coupon.expiryDate ? new Date() > new Date(coupon.expiryDate) : false;
   
-  const handleEdit = () => {
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent event bubbling
+    console.log("Edit button clicked for coupon:", coupon.id);
     navigate(`/edit/${coupon.id}`);
   };
   
-  const handleDelete = async () => {
-    await deleteCoupon(coupon.id);
-    setDeleteDialogOpen(false);
+  const handleDelete = async (e?: React.MouseEvent) => {
+    e?.stopPropagation(); // Prevent event bubbling
+    console.log("Delete coupon:", coupon.id);
+    try {
+      await deleteCoupon(coupon.id);
+      setDeleteDialogOpen(false);
+    } catch (error) {
+      console.error("Error deleting coupon:", error);
+    }
   };
   
-  const handleRedeem = async () => {
-    await redeemCoupon(coupon.id);
-    setRedeemDialogOpen(false);
+  const handleRedeem = async (e?: React.MouseEvent) => {
+    e?.stopPropagation(); // Prevent event bubbling
+    console.log("Redeeming coupon:", coupon.id);
+    try {
+      await redeemCoupon(coupon.id);
+      setRedeemDialogOpen(false);
+    } catch (error) {
+      console.error("Error redeeming coupon:", error);
+    }
   };
   
-  const handleUse = () => {
+  const handleUse = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent event bubbling
+    console.log("Use coupon clicked:", coupon.id);
+    
     if (coupon.image) {
       setImageDialogOpen(true);
     } else if (coupon.link) {
       window.open(coupon.link, "_blank");
     }
+  };
+  
+  const openDeleteDialog = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent event bubbling
+    setDeleteDialogOpen(true);
+  };
+  
+  const openRedeemDialog = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent event bubbling
+    setRedeemDialogOpen(true);
   };
   
   return (
@@ -128,7 +155,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => setRedeemDialogOpen(true)}
+              onClick={openRedeemDialog}
               disabled={coupon.isRedeemed}
             >
               Mark Redeemed
@@ -149,7 +176,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => setDeleteDialogOpen(true)}
+              onClick={openDeleteDialog}
               className="h-8 w-8 text-destructive hover:text-destructive"
             >
               <Trash2 className="h-4 w-4" />
@@ -168,8 +195,8 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleDelete()} className="bg-destructive text-destructive-foreground">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -186,8 +213,8 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRedeem}>
+            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleRedeem()}>
               Mark as Redeemed
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -196,7 +223,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
       
       {/* Image dialog */}
       <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>{coupon.store} - ₪{coupon.amount}</DialogTitle>
           </DialogHeader>
