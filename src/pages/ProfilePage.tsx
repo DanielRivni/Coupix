@@ -73,6 +73,19 @@ const ProfilePage = () => {
     }
   };
 
+  // Get user display name from metadata or use email as fallback
+  const getUserDisplayName = () => {
+    if (!currentUser) return '';
+    
+    // Try to get name from user metadata
+    const userName = currentUser.user_metadata?.name || 
+                     currentUser.user_metadata?.full_name || 
+                     currentUser.email?.split('@')[0] || 
+                     'User';
+    
+    return userName;
+  };
+
   return (
     <Layout requireAuth>
       <div className="max-w-md mx-auto space-y-8">
@@ -87,7 +100,7 @@ const ProfilePage = () => {
             </div>
             {currentUser && (
               <>
-                <h2 className="text-xl font-bold">{currentUser.name}</h2>
+                <h2 className="text-xl font-bold">{getUserDisplayName()}</h2>
                 <p className="text-muted-foreground">{currentUser.email}</p>
               </>
             )}
