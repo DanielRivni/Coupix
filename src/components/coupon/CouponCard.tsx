@@ -37,18 +37,12 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
   
   const isExpired = coupon.expiryDate ? new Date() > new Date(coupon.expiryDate) : false;
   
-  const handleEdit = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleEdit = () => {
     console.log("Edit button clicked for coupon:", coupon.id);
     navigate(`/edit/${coupon.id}`);
   };
   
-  const handleDelete = async (e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
+  const handleDelete = async () => {
     console.log("Delete coupon:", coupon.id);
     try {
       await deleteCoupon(coupon.id);
@@ -58,11 +52,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
     }
   };
   
-  const handleRedeem = async (e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
+  const handleRedeem = async () => {
     console.log("Redeeming coupon:", coupon.id);
     try {
       await redeemCoupon(coupon.id);
@@ -72,9 +62,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
     }
   };
   
-  const handleUse = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleUse = () => {
     console.log("Use coupon clicked:", coupon.id);
     
     if (coupon.image) {
@@ -84,29 +72,19 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
     }
   };
   
-  const openDeleteDialog = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const openDeleteDialog = () => {
     console.log("Opening delete dialog for coupon:", coupon.id);
     setDeleteDialogOpen(true);
   };
   
-  const openRedeemDialog = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const openRedeemDialog = () => {
     console.log("Opening redeem dialog for coupon:", coupon.id);
     setRedeemDialogOpen(true);
   };
   
-  // Handle click on card itself - prevent default card click behavior
-  const handleCardClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-  
   return (
     <>
-      <div className="coupon-card group" onClick={handleCardClick}>
+      <div className="coupon-card group">
         <div className="coupon-card-gradient" />
         
         {/* Status badges */}
@@ -134,7 +112,10 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             {coupon.image && (
               <div 
                 className="w-16 h-16 rounded-md bg-muted flex items-center justify-center overflow-hidden cursor-pointer"
-                onClick={handleUse}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleUse();
+                }}
               >
                 <img 
                   src={coupon.image} 
@@ -163,7 +144,10 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             <Button 
               variant="default" 
               size="sm" 
-              onClick={handleUse}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleUse();
+              }}
               disabled={coupon.isRedeemed || (!coupon.image && !coupon.link)}
             >
               Use Coupon
@@ -173,7 +157,10 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={openRedeemDialog}
+              onClick={(e) => {
+                e.stopPropagation();
+                openRedeemDialog();
+              }}
               disabled={coupon.isRedeemed}
             >
               Mark Redeemed
@@ -185,7 +172,10 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={handleEdit}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEdit();
+              }}
               className="h-8 w-8"
             >
               <Edit className="h-4 w-4" />
@@ -194,7 +184,10 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={openDeleteDialog}
+              onClick={(e) => {
+                e.stopPropagation();
+                openDeleteDialog();
+              }}
               className="h-8 w-8 text-destructive hover:text-destructive"
             >
               <Trash2 className="h-4 w-4" />
@@ -205,7 +198,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
       
       {/* Delete confirmation dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Coupon</AlertDialogTitle>
             <AlertDialogDescription>
@@ -213,12 +206,9 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDelete();
-              }} 
+              onClick={handleDelete} 
               className="bg-destructive text-destructive-foreground"
             >
               Delete
@@ -229,7 +219,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
       
       {/* Redeem confirmation dialog */}
       <AlertDialog open={redeemDialogOpen} onOpenChange={setRedeemDialogOpen}>
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Mark as Redeemed</AlertDialogTitle>
             <AlertDialogDescription>
@@ -237,13 +227,8 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={(e) => {
-                e.stopPropagation();
-                handleRedeem();
-              }}
-            >
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRedeem}>
               Mark as Redeemed
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -252,7 +237,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
       
       {/* Image dialog */}
       <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
-        <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{coupon.store} - ₪{coupon.amount}</DialogTitle>
           </DialogHeader>
