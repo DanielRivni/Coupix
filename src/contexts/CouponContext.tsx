@@ -28,7 +28,7 @@ export const useCoupons = () => {
 export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
-  const { currentUser } = useAuth();
+  const { currentUser, ensureUserProfile } = useAuth();
 
   useEffect(() => {
     if (currentUser) {
@@ -45,6 +45,9 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setLoading(true);
     try {
       console.log("Loading coupons for user:", currentUser.id);
+      
+      // Ensure profile exists before loading coupons
+      await ensureUserProfile();
       
       const { data, error } = await supabase
         .from('coupons')
@@ -94,13 +97,20 @@ export const CouponProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       console.log("Creating coupon:", couponData);
       
+      // Ensure profile exists before creating a coupon
+      const profileExists = await ensureUserProfile();
+      if (!profileExists) {
+        console.error("Cannot create coupon without a user profile");
+        throw new Error("Profile not set up correctly");
+      }
+      
       // Convert to Supabase format
       const { data, error } = await supabase
         .from('coupons')
         .insert({
           user_id: currentUser.id,
           store: couponData.store,
-          amount: parseInt(couponData.amount) || 0,
+          amount: couponData.amount ? (isNaN(parseInt(couponData.amount)) ? couponData.amount : parseInt(couponData.amount)) : 0,
           description: couponData.description,
           link: couponData.link,
           image_url: couponData.image,

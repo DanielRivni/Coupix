@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -42,30 +41,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initializeAuth = async () => {
       setLoading(true);
       
-      // Check current session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setCurrentUser(session.user);
-      }
-      
-      // Listen for auth changes
-      const { data: { subscription } } = await supabase.auth.onAuthStateChange(
-        async (_event, session) => {
-          if (session) {
-            setCurrentUser(session.user);
-          } else {
-            setCurrentUser(null);
-          }
-          setLoading(false);
+      try {
+        // Check current session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          console.log("User is logged in:", session.user.id);
+          setCurrentUser(session.user);
+        } else {
+          console.log("No active session found");
         }
-      );
+        
+        // Listen for auth changes
+        const { data: { subscription } } = await supabase.auth.onAuthStateChange(
+          async (_event, session) => {
+            console.log("Auth state changed. Event:", _event);
+            if (session) {
+              console.log("New session user:", session.user.id);
+              setCurrentUser(session.user);
+            } else {
+              console.log("Session ended");
+              setCurrentUser(null);
+            }
+            setLoading(false);
+          }
+        );
 
-      setLoading(false);
-      
-      // Cleanup function
-      return () => {
-        subscription.unsubscribe();
-      };
+        setLoading(false);
+        
+        // Cleanup function
+        return () => {
+          subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error("Error initializing auth:", error);
+        setLoading(false);
+      }
     };
 
     initializeAuth();
@@ -73,37 +83,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Public method to ensure a user profile exists
   const ensureUserProfile = async (): Promise<boolean> => {
-    if (!currentUser) return false;
+    if (!currentUser) {
+      console.log("No current user, can't ensure profile");
+      return false;
+    }
     
     try {
+      console.log("Ensuring profile exists for user:", currentUser.id);
+      
       // Check if profile exists
       const { data, error } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, name, email')
         .eq('id', currentUser.id)
         .single();
       
-      if (error && error.code === 'PGRST116') {
-        // Profile doesn't exist, create it
-        console.log("Creating new profile for user:", currentUser.id);
+      if (error) {
+        console.log("Error checking for profile or profile not found:", error.message);
         
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            id: currentUser.id,
-            name: currentUser.user_metadata?.name || 'User',
-            email: currentUser.email || ''
-          });
-        
-        if (insertError) {
-          console.error("Error creating profile:", insertError);
-          toast.error("Failed to set up your profile");
+        if (error.code === 'PGRST116') {
+          // Profile doesn't exist, create it
+          console.log("Creating new profile for user:", currentUser.id);
+          
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: currentUser.id,
+              name: currentUser.user_metadata?.name || 'User',
+              email: currentUser.email || ''
+            });
+          
+          if (insertError) {
+            console.error("Error creating profile:", insertError);
+            
+            // Check specific error cases
+            if (insertError.code === '42501') {
+              console.error("Permission denied. RLS policy may be blocking the insert.");
+            }
+            
+            toast.error("Failed to set up your profile");
+            return false;
+          }
+          
+          console.log("Profile created successfully");
+          return true;
+        } else {
+          // Other database error
+          console.error("Database error checking profile:", error);
           return false;
         }
-        
-        return true;
       }
       
+      console.log("Profile already exists:", data);
       return true;
     } catch (error) {
       console.error("Error ensuring user profile:", error);
@@ -111,6 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Login function
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
@@ -130,6 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Signup function
   const signup = async (email: string, password: string, name: string) => {
     try {
       setLoading(true);
@@ -157,6 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Logout function
   const logout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
@@ -172,6 +206,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Password change
   const changePassword = async (currentPassword: string, newPassword: string) => {
     try {
       setLoading(true);
@@ -200,6 +235,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Delete account
   const deleteAccount = async () => {
     try {
       setLoading(true);

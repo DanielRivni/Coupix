@@ -11,3 +11,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
   },
 });
+
+// Check and log initialization
+console.log("Supabase client initialized:", !!supabase);
