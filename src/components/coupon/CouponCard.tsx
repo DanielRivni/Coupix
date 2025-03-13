@@ -2,27 +2,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { Edit, Trash2, ExternalLink, CheckSquare, AlertTriangle } from "lucide-react";
+import { Edit, Trash2, ExternalLink, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Coupon } from "@/lib/types";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { useCoupons } from "@/contexts/CouponContext";
+import CouponDeleteDialog from "./dialogs/CouponDeleteDialog";
+import CouponRedeemDialog from "./dialogs/CouponRedeemDialog";
+import CouponImageDialog from "./dialogs/CouponImageDialog";
 
 interface CouponCardProps {
   coupon: Coupon;
@@ -72,16 +59,6 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
     }
   };
   
-  const openDeleteDialog = () => {
-    console.log("Opening delete dialog for coupon:", coupon.id);
-    setDeleteDialogOpen(true);
-  };
-  
-  const openRedeemDialog = () => {
-    console.log("Opening redeem dialog for coupon:", coupon.id);
-    setRedeemDialogOpen(true);
-  };
-  
   return (
     <>
       <div className="coupon-card group">
@@ -112,10 +89,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             {coupon.image && (
               <div 
                 className="w-16 h-16 rounded-md bg-muted flex items-center justify-center overflow-hidden cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleUse();
-                }}
+                onClick={() => handleUse()}
               >
                 <img 
                   src={coupon.image} 
@@ -144,10 +118,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             <Button 
               variant="default" 
               size="sm" 
-              onClick={(e) => {
-                e.stopPropagation();
-                handleUse();
-              }}
+              onClick={handleUse}
               disabled={coupon.isRedeemed || (!coupon.image && !coupon.link)}
             >
               Use Coupon
@@ -157,10 +128,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={(e) => {
-                e.stopPropagation();
-                openRedeemDialog();
-              }}
+              onClick={() => setRedeemDialogOpen(true)}
               disabled={coupon.isRedeemed}
             >
               Mark Redeemed
@@ -172,10 +140,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={(e) => {
-                e.stopPropagation();
-                handleEdit();
-              }}
+              onClick={handleEdit}
               className="h-8 w-8"
             >
               <Edit className="h-4 w-4" />
@@ -184,10 +149,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={(e) => {
-                e.stopPropagation();
-                openDeleteDialog();
-              }}
+              onClick={() => setDeleteDialogOpen(true)}
               className="h-8 w-8 text-destructive hover:text-destructive"
             >
               <Trash2 className="h-4 w-4" />
@@ -196,65 +158,23 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
         </div>
       </div>
       
-      {/* Delete confirmation dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Coupon</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this coupon? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDelete} 
-              className="bg-destructive text-destructive-foreground"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <CouponDeleteDialog 
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDelete}
+      />
       
-      {/* Redeem confirmation dialog */}
-      <AlertDialog open={redeemDialogOpen} onOpenChange={setRedeemDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Mark as Redeemed</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to mark this coupon as redeemed? This will help you track which coupons you've already used.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRedeem}>
-              Mark as Redeemed
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <CouponRedeemDialog 
+        open={redeemDialogOpen}
+        onOpenChange={setRedeemDialogOpen}
+        onConfirm={handleRedeem}
+      />
       
-      {/* Image dialog */}
-      <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{coupon.store} - ₪{coupon.amount}</DialogTitle>
-          </DialogHeader>
-          {coupon.image && (
-            <div className="flex justify-center p-6">
-              <img 
-                src={coupon.image} 
-                alt={`${coupon.store} coupon`} 
-                className="max-w-full max-h-[60vh] object-contain"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://placehold.co/400x300/gray/white?text=Image+Error';
-                }}
-              />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <CouponImageDialog 
+        open={imageDialogOpen}
+        onOpenChange={setImageDialogOpen}
+        coupon={coupon}
+      />
     </>
   );
 };
