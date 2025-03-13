@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCoupons } from "@/contexts/CouponContext";
 import CouponCard from "./CouponCard";
-import { Coupon } from "@/lib/types";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const CouponList = () => {
   const { coupons, loading } = useCoupons();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<"all" | "active" | "inactive">("all");
@@ -52,8 +53,8 @@ const CouponList = () => {
         </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-grow relative">
+      <div className="flex flex-col gap-4">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search coupons..."
@@ -63,31 +64,34 @@ const CouponList = () => {
           />
         </div>
 
-        <div className="flex gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <Button
             variant={filterType === "all" ? "default" : "outline"}
             onClick={() => setFilterType("all")}
-            className="flex-1 sm:flex-none"
+            className="w-full text-xs sm:text-sm"
+            size={isMobile ? "sm" : "default"}
           >
-            <Layers className="mr-2 h-4 w-4" />
-            All
+            <Layers className={isMobile ? "h-3 w-3" : "h-4 w-4"} />
+            <span className="whitespace-nowrap">All</span>
           </Button>
           
           <Button
             variant={filterType === "active" ? "default" : "outline"}
             onClick={() => setFilterType("active")}
-            className="flex-1 sm:flex-none"
+            className="w-full text-xs sm:text-sm"
+            size={isMobile ? "sm" : "default"}
           >
-            Active
+            <span className="whitespace-nowrap">Active</span>
           </Button>
           
           <Button
             variant={filterType === "inactive" ? "default" : "outline"}
             onClick={() => setFilterType("inactive")}
-            className="flex-1 sm:flex-none"
+            className="w-full text-xs sm:text-sm"
+            size={isMobile ? "sm" : "default"}
           >
-            <Archive className="mr-2 h-4 w-4" />
-            Redeemed/Expired
+            <Archive className={isMobile ? "h-3 w-3" : "h-4 w-4"} />
+            <span className="whitespace-nowrap">Redeemed</span>
           </Button>
         </div>
       </div>
