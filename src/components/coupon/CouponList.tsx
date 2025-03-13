@@ -80,7 +80,7 @@ const CouponList = () => {
             className="w-full text-xs sm:text-sm"
             size={isMobile ? "sm" : "default"}
           >
-            <Archive className={isMobile ? "h-3 w-3" : "h-4 w-4"} />
+            <Archive className={isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"} />
             <span className="whitespace-nowrap">Redeemed</span>
           </Button>
           
@@ -90,7 +90,7 @@ const CouponList = () => {
             className="w-full text-xs sm:text-sm"
             size={isMobile ? "sm" : "default"}
           >
-            <Layers className={isMobile ? "h-3 w-3" : "h-4 w-4"} />
+            <Layers className={isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"} />
             <span className="whitespace-nowrap">All</span>
           </Button>
         </div>

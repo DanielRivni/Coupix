@@ -1,8 +1,17 @@
+
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { Session, User, AuthError } from "@supabase/supabase-js";
+import { User, AuthError } from "@supabase/supabase-js";
+import { 
+  ensureUserProfile, 
+  login as loginUser, 
+  signup as signupUser, 
+  logout as logoutUser,
+  changePassword as changeUserPassword,
+  deleteAccount as deleteUserAccount
+} from "@/services/authService";
 
 export interface Profile {
   id: string;
@@ -81,81 +90,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initializeAuth();
   }, []);
 
-  // Public method to ensure a user profile exists
-  const ensureUserProfile = async (): Promise<boolean> => {
-    if (!currentUser) {
-      console.log("No current user, can't ensure profile");
-      return false;
-    }
-    
-    try {
-      console.log("Ensuring profile exists for user:", currentUser.id);
-      
-      // Check if profile exists
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, name, email')
-        .eq('id', currentUser.id)
-        .single();
-      
-      if (error) {
-        console.log("Error checking for profile or profile not found:", error.message);
-        
-        if (error.code === 'PGRST116') {
-          // Profile doesn't exist, create it
-          console.log("Creating new profile for user:", currentUser.id);
-          
-          const { error: insertError } = await supabase
-            .from('profiles')
-            .insert({
-              id: currentUser.id,
-              name: currentUser.user_metadata?.name || 'User',
-              email: currentUser.email || ''
-            });
-          
-          if (insertError) {
-            console.error("Error creating profile:", insertError);
-            
-            // Check specific error cases
-            if (insertError.code === '42501') {
-              console.error("Permission denied. RLS policy may be blocking the insert.");
-            }
-            
-            toast.error("Failed to set up your profile");
-            return false;
-          }
-          
-          console.log("Profile created successfully");
-          return true;
-        } else {
-          // Other database error
-          console.error("Database error checking profile:", error);
-          return false;
-        }
-      }
-      
-      console.log("Profile already exists:", data);
-      return true;
-    } catch (error) {
-      console.error("Error ensuring user profile:", error);
-      return false;
-    }
-  };
-
   // Login function
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      
-      if (error) throw error;
-      
+      await loginUser(email, password);
       toast.success("Login successful");
-      // Navigate is handled in Layout component for consistency
+      // Navigation handled in Layout component for consistency
     } catch (error: any) {
-      const authError = error as AuthError;
-      console.error("Login error:", authError);
-      toast.error(authError.message || "Login failed");
+      console.error("Login error:", error);
       throw error;
     } finally {
       setLoading(false);
@@ -166,24 +109,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async (email: string, password: string, name: string) => {
     try {
       setLoading(true);
-      
-      // Create the user in Supabase Auth
-      const { error } = await supabase.auth.signUp({ 
-        email, 
-        password,
-        options: {
-          data: { name }
-        }
-      });
-      
-      if (error) throw error;
-      
+      await signupUser(email, password, name);
       toast.success("Account created successfully. You can now log in.");
       navigate("/login");
     } catch (error: any) {
-      const authError = error as AuthError;
-      console.error("Signup error:", authError);
-      toast.error(authError.message || "Signup failed");
+      console.error("Signup error:", error);
       throw error;
     } finally {
       setLoading(false);
@@ -193,15 +123,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logout function
   const logout = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
+      await logoutUser();
       setCurrentUser(null);
       toast.success("Logged out successfully");
       navigate("/login");
     } catch (error: any) {
       console.error("Logout error:", error);
-      toast.error("Logout failed");
       throw error;
     }
   };
@@ -210,22 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const changePassword = async (currentPassword: string, newPassword: string) => {
     try {
       setLoading(true);
-      
-      // First, verify current password by trying to sign in with it
-      const { error: verifyError } = await supabase.auth.signInWithPassword({
-        email: currentUser?.email || '',
-        password: currentPassword
-      });
-      
-      if (verifyError) {
-        throw new Error("Current password is incorrect");
-      }
-      
-      // Change password
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      
-      if (error) throw error;
-      
+      await changeUserPassword(currentPassword, newPassword, currentUser);
       toast.success("Password updated successfully");
     } catch (error: any) {
       toast.error(error.message || "Password change failed");
@@ -239,16 +151,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const deleteAccount = async () => {
     try {
       setLoading(true);
-      
-      if (!currentUser) {
-        throw new Error("No user logged in");
-      }
-      
-      // We need to handle this differently since we can't use admin features
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) throw error;
-      
+      await deleteUserAccount();
       setCurrentUser(null);
       toast.success("You've been logged out. Contact support to delete your account.");
       navigate("/login");
