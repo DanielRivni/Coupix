@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { UserCircle, Eye, EyeOff, Key, Trash2 } from "lucide-react";
+import { UserCircle, Eye, EyeOff, Key, Trash2, Save, Edit } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,7 +39,13 @@ const passwordFormSchema = z
     path: ["confirmPassword"],
   });
 
+const profileFormSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  email: z.string().email({ message: "Please enter a valid email." }),
+});
+
 type PasswordFormValues = z.infer<typeof passwordFormSchema>;
+type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 const ProfilePage = () => {
   const { currentUser, changePassword, deleteAccount } = useAuth();
@@ -45,8 +53,10 @@ const ProfilePage = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [loading, setLoading] = useState(false);
   
-  const form = useForm<PasswordFormValues>({
+  const passwordForm = useForm<PasswordFormValues>({
     resolver: zodResolver(passwordFormSchema),
     defaultValues: {
       currentPassword: "",
@@ -55,13 +65,60 @@ const ProfilePage = () => {
     },
   });
 
-  const onSubmit = async (data: PasswordFormValues) => {
+  const profileForm = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileFormSchema),
+    defaultValues: {
+      name: getUserDisplayName(),
+      email: currentUser?.email || "",
+    },
+  });
+
+  const onSubmitPassword = async (data: PasswordFormValues) => {
     try {
       await changePassword(data.currentPassword, data.newPassword);
-      form.reset();
+      passwordForm.reset();
       setShowPasswordForm(false);
     } catch (error) {
       console.error("Failed to change password:", error);
+    }
+  };
+  
+  const onSubmitProfile = async (data: ProfileFormValues) => {
+    if (!currentUser) return;
+    
+    setLoading(true);
+    try {
+      // Update name in user metadata
+      const { error: updateError } = await supabase.auth.updateUser({
+        email: data.email !== currentUser.email ? data.email : undefined,
+        data: { name: data.name }
+      });
+      
+      if (updateError) throw updateError;
+      
+      // Update name in profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          name: data.name,
+          email: data.email 
+        })
+        .eq('id', currentUser.id);
+      
+      if (profileError) throw profileError;
+      
+      toast.success("Profile updated successfully");
+      setEditingProfile(false);
+      
+      // Show a special message if email was changed
+      if (data.email !== currentUser.email) {
+        toast.info("Check your inbox to confirm your new email address");
+      }
+    } catch (error: any) {
+      console.error("Failed to update profile:", error);
+      toast.error(error.message || "Failed to update profile");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -74,7 +131,7 @@ const ProfilePage = () => {
   };
 
   // Get user display name from metadata or use email as fallback
-  const getUserDisplayName = () => {
+  function getUserDisplayName() {
     if (!currentUser) return '';
     
     // Try to get name from user metadata
@@ -84,7 +141,7 @@ const ProfilePage = () => {
                      'User';
     
     return userName;
-  };
+  }
 
   return (
     <Layout requireAuth>
@@ -94,17 +151,81 @@ const ProfilePage = () => {
             <CardTitle className="text-center">Profile</CardTitle>
             <CardDescription className="text-center">Manage your account settings</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 text-center">
-            <div className="mx-auto h-24 w-24 rounded-full bg-muted flex items-center justify-center">
-              <UserCircle className="h-16 w-16 text-primary" />
-            </div>
-            {currentUser && (
-              <>
-                <h2 className="text-xl font-bold">{getUserDisplayName()}</h2>
-                <p className="text-muted-foreground">{currentUser.email}</p>
-              </>
-            )}
-          </CardContent>
+          {!editingProfile ? (
+            <CardContent className="space-y-4 text-center">
+              <div className="mx-auto h-24 w-24 rounded-full bg-muted flex items-center justify-center">
+                <UserCircle className="h-16 w-16 text-primary" />
+              </div>
+              {currentUser && (
+                <>
+                  <h2 className="text-xl font-bold">{getUserDisplayName()}</h2>
+                  <p className="text-muted-foreground">{currentUser.email}</p>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setEditingProfile(true)}
+                  >
+                    <Edit className="mr-2 h-4 w-4" /> 
+                    Edit Profile
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          ) : (
+            <CardContent>
+              <Form {...profileForm}>
+                <form onSubmit={profileForm.handleSubmit(onSubmitProfile)} className="space-y-4">
+                  <FormField
+                    control={profileForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Your name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={profileForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="email" 
+                            placeholder="Your email"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="flex gap-2 pt-2">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setEditingProfile(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="submit"
+                      disabled={loading}
+                    >
+                      {loading ? "Saving..." : "Save Changes"}
+                      {!loading && <Save className="ml-2 h-4 w-4" />}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </CardContent>
+          )}
         </Card>
 
         <Card>
@@ -124,10 +245,10 @@ const ProfilePage = () => {
             </div>
             
             {showPasswordForm && (
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-6">
+              <Form {...passwordForm}>
+                <form onSubmit={passwordForm.handleSubmit(onSubmitPassword)} className="space-y-4 mt-6">
                   <FormField
-                    control={form.control}
+                    control={passwordForm.control}
                     name="currentPassword"
                     render={({ field }) => (
                       <FormItem>
@@ -159,7 +280,7 @@ const ProfilePage = () => {
                     )}
                   />
                   <FormField
-                    control={form.control}
+                    control={passwordForm.control}
                     name="newPassword"
                     render={({ field }) => (
                       <FormItem>
@@ -191,7 +312,7 @@ const ProfilePage = () => {
                     )}
                   />
                   <FormField
-                    control={form.control}
+                    control={passwordForm.control}
                     name="confirmPassword"
                     render={({ field }) => (
                       <FormItem>

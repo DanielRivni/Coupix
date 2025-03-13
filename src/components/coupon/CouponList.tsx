@@ -14,7 +14,7 @@ const CouponList = () => {
   const isMobile = useIsMobile();
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "active" | "inactive">("all");
+  const [filterType, setFilterType] = useState<"all" | "active" | "inactive">("active");
 
   const handleCreateCoupon = () => {
     navigate("/create");
@@ -66,16 +66,6 @@ const CouponList = () => {
 
         <div className="grid grid-cols-3 gap-2">
           <Button
-            variant={filterType === "all" ? "default" : "outline"}
-            onClick={() => setFilterType("all")}
-            className="w-full text-xs sm:text-sm"
-            size={isMobile ? "sm" : "default"}
-          >
-            <Layers className={isMobile ? "h-3 w-3" : "h-4 w-4"} />
-            <span className="whitespace-nowrap">All</span>
-          </Button>
-          
-          <Button
             variant={filterType === "active" ? "default" : "outline"}
             onClick={() => setFilterType("active")}
             className="w-full text-xs sm:text-sm"
@@ -92,6 +82,16 @@ const CouponList = () => {
           >
             <Archive className={isMobile ? "h-3 w-3" : "h-4 w-4"} />
             <span className="whitespace-nowrap">Redeemed</span>
+          </Button>
+          
+          <Button
+            variant={filterType === "all" ? "default" : "outline"}
+            onClick={() => setFilterType("all")}
+            className="w-full text-xs sm:text-sm"
+            size={isMobile ? "sm" : "default"}
+          >
+            <Layers className={isMobile ? "h-3 w-3" : "h-4 w-4"} />
+            <span className="whitespace-nowrap">All</span>
           </Button>
         </div>
       </div>

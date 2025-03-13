@@ -79,7 +79,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
         <div className="coupon-card-gradient" />
         
         {/* Status badges */}
-        <div className="absolute top-2 right-2 flex gap-2">
+        <div className="absolute top-2 right-2 flex gap-2 z-10">
           {coupon.isRedeemed && (
             <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-200">
               Redeemed
@@ -102,7 +102,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             
             {coupon.image && (
               <div 
-                className="w-16 h-16 rounded-md bg-muted flex items-center justify-center overflow-hidden cursor-pointer"
+                className={`w-16 h-16 rounded-md bg-muted flex items-center justify-center overflow-hidden cursor-pointer ${coupon.isRedeemed ? 'mt-6' : ''}`}
                 onClick={handleUseClick}
               >
                 <img 
