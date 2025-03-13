@@ -24,13 +24,20 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
   
   const isExpired = coupon.expiryDate ? new Date() > new Date(coupon.expiryDate) : false;
   
-  const handleEdit = () => {
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
     console.log("Edit button clicked for coupon:", coupon.id);
     navigate(`/edit/${coupon.id}`);
   };
   
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.log("Opening delete dialog for coupon:", coupon.id);
+    setDeleteDialogOpen(true);
+  };
+  
   const handleDelete = async () => {
-    console.log("Delete coupon:", coupon.id);
+    console.log("Confirming delete for coupon:", coupon.id);
     try {
       await deleteCoupon(coupon.id);
       setDeleteDialogOpen(false);
@@ -39,8 +46,14 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
     }
   };
   
+  const handleRedeemClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.log("Opening redeem dialog for coupon:", coupon.id);
+    setRedeemDialogOpen(true);
+  };
+  
   const handleRedeem = async () => {
-    console.log("Redeeming coupon:", coupon.id);
+    console.log("Confirming redeem for coupon:", coupon.id);
     try {
       await redeemCoupon(coupon.id);
       setRedeemDialogOpen(false);
@@ -49,7 +62,8 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
     }
   };
   
-  const handleUse = () => {
+  const handleUseClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     console.log("Use coupon clicked:", coupon.id);
     
     if (coupon.image) {
@@ -61,7 +75,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
   
   return (
     <>
-      <div className="coupon-card group">
+      <div className="coupon-card group relative">
         <div className="coupon-card-gradient" />
         
         {/* Status badges */}
@@ -89,7 +103,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             {coupon.image && (
               <div 
                 className="w-16 h-16 rounded-md bg-muted flex items-center justify-center overflow-hidden cursor-pointer"
-                onClick={() => handleUse()}
+                onClick={handleUseClick}
               >
                 <img 
                   src={coupon.image} 
@@ -114,12 +128,13 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
           )}
           
           {/* Actions */}
-          <div className="flex flex-wrap gap-2 pt-2">
+          <div className="flex flex-wrap gap-2 pt-2 relative z-10">
             <Button 
               variant="default" 
               size="sm" 
-              onClick={handleUse}
+              onClick={handleUseClick}
               disabled={coupon.isRedeemed || (!coupon.image && !coupon.link)}
+              className="relative"
             >
               Use Coupon
               {coupon.link && <ExternalLink className="ml-1 h-4 w-4" />}
@@ -128,8 +143,9 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => setRedeemDialogOpen(true)}
+              onClick={handleRedeemClick}
               disabled={coupon.isRedeemed}
+              className="relative"
             >
               Mark Redeemed
               <CheckSquare className="ml-1 h-4 w-4" />
@@ -141,7 +157,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
               variant="ghost" 
               size="icon" 
               onClick={handleEdit}
-              className="h-8 w-8"
+              className="relative h-8 w-8"
             >
               <Edit className="h-4 w-4" />
             </Button>
@@ -149,8 +165,8 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => setDeleteDialogOpen(true)}
-              className="h-8 w-8 text-destructive hover:text-destructive"
+              onClick={handleDeleteClick}
+              className="relative h-8 w-8 text-destructive hover:text-destructive"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
