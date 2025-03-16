@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coupix
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "5000"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: coupix
+  template:
+    metadata:
+      labels:
+        app: coupix
+    spec:
+      containers:
+      - name: coupix
+        image: {{ docker_image }}:{{ image_tag }}
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000
