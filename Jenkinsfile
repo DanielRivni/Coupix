@@ -38,8 +38,8 @@ pipeline {
         }
 
         stage('Build Docker Image') {
-            dir ('app'){
-                steps {
+            steps {
+                dir ('app'){
                     script {
                         sh "docker build -t ${env.DOCKER_IMAGE}:${env.IMAGE_TAG} ."
                     }
@@ -56,8 +56,8 @@ pipeline {
         }
 
         stage('Render Jinja2 Template') {
-            dir('deployment'){
-                steps {
+            steps {
+                dir('deployment'){
                     script {
                         sh """
                         python3 -m venv /opt/venv
@@ -74,8 +74,8 @@ pipeline {
         }
 
         stage('Deploy to Kubernetes') {
-            dir('deployment'){
-                steps {
+            steps {
+                dir('deployment'){
                     script {
                         sh "kubectl -n ${env.K8S_NAMESPACE} apply -f generated-deployment.yaml -f service.yaml --wait=true"
                     }
