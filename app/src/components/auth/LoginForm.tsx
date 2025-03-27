@@ -15,12 +15,14 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const loginFormSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  rememberMe: z.boolean().default(false),
 });
 
 type LoginFormValues = z.infer<typeof loginFormSchema>;
@@ -40,6 +42,7 @@ const LoginForm = ({ setError }: LoginFormProps) => {
     defaultValues: {
       email: "",
       password: "",
+      rememberMe: false,
     },
   });
 
@@ -48,7 +51,7 @@ const LoginForm = ({ setError }: LoginFormProps) => {
     setError(null);
     
     try {
-      await login(values.email, values.password);
+      await login(values.email, values.password, values.rememberMe);
       navigate("/");
     } catch (error: any) {
       console.error("Login error:", error);
@@ -118,6 +121,24 @@ const LoginForm = ({ setError }: LoginFormProps) => {
                   </div>
                 </FormControl>
                 <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="rememberMe"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>Remember me</FormLabel>
+                </div>
               </FormItem>
             )}
           />

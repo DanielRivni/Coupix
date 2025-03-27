@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { User, AuthError } from "@supabase/supabase-js";
 import { toast } from "sonner";
@@ -67,10 +66,23 @@ export const ensureUserProfile = async (): Promise<boolean> => {
   }
 };
 
-// Login function with better error handling
-export const login = async (email: string, password: string) => {
+// Login function with better error handling and remember me option
+export const login = async (email: string, password: string, rememberMe: boolean = false) => {
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    // Set persistence based on the rememberMe option
+    // When rememberMe is true, session will persist across browser restarts
+    // When false, session will be cleared when the browser is closed
+    const persistSession = rememberMe;
+    
+    const { data, error } = await supabase.auth.signInWithPassword({ 
+      email, 
+      password,
+      options: {
+        // Set the persistence option based on rememberMe
+        // This configures how long the session is stored
+        data: { persistSession }
+      }
+    });
     
     if (error) {
       console.error("Authentication error:", error);
@@ -82,6 +94,13 @@ export const login = async (email: string, password: string) => {
       const enhancedError = new Error(error.message) as Error & { code?: string };
       enhancedError.code = error.code;
       throw enhancedError;
+    }
+    
+    // If "Remember me" is enabled, store a flag in localStorage
+    if (rememberMe) {
+      localStorage.setItem("rememberMe", "true");
+    } else {
+      localStorage.removeItem("rememberMe");
     }
     
     return data;
