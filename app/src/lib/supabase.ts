@@ -5,4 +5,3 @@ import { supabase } from '@/integrations/supabase/client';
 console.log("Supabase client initialized:", !!supabase);
 
 export { supabase };
-

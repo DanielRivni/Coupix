@@ -6,6 +6,9 @@ import path from "path";
 export default defineConfig({
   root: path.resolve(__dirname, "./app"),
   publicDir: path.resolve(__dirname, "./app/public"),
+  server: {
+    port: 8080
+  },
   build: {
     outDir: path.resolve(__dirname, "./dist")
   }
