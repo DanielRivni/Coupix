@@ -66,11 +66,19 @@ export const ensureUserProfile = async (): Promise<boolean> => {
   }
 };
 
-// Login function
+// Login function with better error handling
 export const login = async (email: string, password: string) => {
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   
-  if (error) throw error;
+  if (error) {
+    console.error("Authentication error:", error);
+    // Pass the error code along with the error
+    const enhancedError = new Error(error.message) as Error & { code?: string };
+    enhancedError.code = error.code;
+    throw enhancedError;
+  }
+  
+  return data;
 };
 
 // Signup function

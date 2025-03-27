@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth } from "@/contexts/AuthContext";
 import { Eye, EyeOff, LogIn } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -23,6 +25,8 @@ const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirectTo") || "/";
   
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -32,14 +36,27 @@ const LoginForm = () => {
     },
   });
 
+  // Clear error when form values change
+  useEffect(() => {
+    const subscription = form.watch(() => {
+      if (loginError) setLoginError(null);
+    });
+    return () => subscription.unsubscribe();
+  }, [form, loginError]);
+
   const onSubmit = async (data: FormData) => {
     setLoginError(null);
     try {
       await login(data.email, data.password);
+      console.log("Login successful, should redirect");
       // Navigation is handled in the AuthContext
     } catch (error: any) {
       console.error("Login failed", error);
-      setLoginError(error.message || "Login failed. Please check your credentials and try again.");
+      if (error.code === "invalid_credentials") {
+        setLoginError("Invalid email or password. Please check your credentials and try again.");
+      } else {
+        setLoginError(error.message || "Login failed. Please check your credentials and try again.");
+      }
     }
   };
 
@@ -53,9 +70,10 @@ const LoginForm = () => {
       </CardHeader>
       <CardContent>
         {loginError && (
-          <div className="bg-destructive/15 text-destructive p-3 rounded-md mb-4">
-            {loginError}
-          </div>
+          <Alert className="mb-4 bg-red-50 text-red-800 border-red-200">
+            <AlertCircle className="h-4 w-4 text-red-800" />
+            <AlertDescription>{loginError}</AlertDescription>
+          </Alert>
         )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -70,6 +88,7 @@ const LoginForm = () => {
                       placeholder="email@example.com"
                       {...field}
                       disabled={loading}
+                      autoComplete="email"
                     />
                   </FormControl>
                   <FormMessage />
@@ -89,6 +108,7 @@ const LoginForm = () => {
                         placeholder="••••••••"
                         {...field}
                         disabled={loading}
+                        autoComplete="current-password"
                       />
                       <Button
                         type="button"
