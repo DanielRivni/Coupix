@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabase";
 import { User, AuthError } from "@supabase/supabase-js";
 import { toast } from "sonner";
@@ -68,17 +69,26 @@ export const ensureUserProfile = async (): Promise<boolean> => {
 
 // Login function with better error handling
 export const login = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  
-  if (error) {
-    console.error("Authentication error:", error);
-    // Pass the error code along with the error
-    const enhancedError = new Error(error.message) as Error & { code?: string };
-    enhancedError.code = error.code;
-    throw enhancedError;
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    
+    if (error) {
+      console.error("Authentication error:", error);
+      
+      // Store the error in localStorage so it can be displayed on the login page
+      localStorage.setItem("authError", error.message);
+      
+      // Pass the error code along with the error
+      const enhancedError = new Error(error.message) as Error & { code?: string };
+      enhancedError.code = error.code;
+      throw enhancedError;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error("Login attempt failed:", error);
+    throw error;
   }
-  
-  return data;
 };
 
 // Signup function
@@ -92,7 +102,10 @@ export const signup = async (email: string, password: string, name: string) => {
     }
   });
   
-  if (error) throw error;
+  if (error) {
+    localStorage.setItem("authError", error.message);
+    throw error;
+  }
 };
 
 // Logout function
