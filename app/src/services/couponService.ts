@@ -13,6 +13,7 @@ export const transformDatabaseCoupon = (dbCoupon: any): Coupon => {
     description: dbCoupon.description || '',
     link: dbCoupon.link || '',
     image: dbCoupon.image_url || '',
+    couponCode: dbCoupon.coupon_code || '',
     expiryDate: dbCoupon.expiry_date ? new Date(dbCoupon.expiry_date) : null,
     isRedeemed: dbCoupon.is_redeemed,
     createdAt: new Date(dbCoupon.created_at)
@@ -55,6 +56,7 @@ export const createCoupon = async (
       description: couponData.description,
       link: couponData.link,
       image_url: couponData.image,
+      coupon_code: couponData.couponCode,
       expiry_date: couponData.expiryDate,
       is_redeemed: false
     })
@@ -84,6 +86,7 @@ export const updateCoupon = async (
   if (couponData.description !== undefined) updateData.description = couponData.description;
   if (couponData.link !== undefined) updateData.link = couponData.link;
   if (couponData.image !== undefined) updateData.image_url = couponData.image;
+  if (couponData.couponCode !== undefined) updateData.coupon_code = couponData.couponCode;
   if (couponData.expiryDate !== undefined) updateData.expiry_date = couponData.expiryDate;
   if (couponData.isRedeemed !== undefined) updateData.is_redeemed = couponData.isRedeemed;
   

@@ -7,6 +7,7 @@ export interface Coupon {
   description?: string;
   link?: string;
   image?: string;
+  couponCode?: string;
   expiryDate?: Date | null;
   isRedeemed: boolean;
   createdAt: Date;
