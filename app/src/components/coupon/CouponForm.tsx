@@ -27,7 +27,9 @@ const formSchema = z.object({
   customAmount: z.string().optional(),
   description: z.string().optional(),
   link: z.string().url().optional().or(z.literal("")),
+  couponCode: z.string().optional(),
   expiryDate: z.date().optional().nullable(),
+  expiryDateManual: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -55,7 +57,9 @@ const CouponForm = () => {
       customAmount: "",
       description: "",
       link: "",
+      couponCode: "",
       expiryDate: null,
+      expiryDateManual: "",
     },
   });
 
@@ -134,7 +138,9 @@ const CouponForm = () => {
           customAmount: isCustomAmount ? coupon.amount : "",
           description: coupon.description || "",
           link: coupon.link || "",
+          couponCode: coupon.couponCode || "",
           expiryDate: coupon.expiryDate,
+          expiryDateManual: coupon.expiryDate ? format(coupon.expiryDate, "yyyy-MM-dd") : "",
         });
       } else {
         navigate("/");
@@ -176,13 +182,20 @@ const CouponForm = () => {
         }
       }
       
+      // Handle manual date entry
+      let finalExpiryDate = data.expiryDate;
+      if (data.expiryDateManual && !data.expiryDate) {
+        finalExpiryDate = new Date(data.expiryDateManual);
+      }
+      
       const couponData = {
         store: finalStore,
         amount: finalAmount,
         description: data.description,
         link: data.link,
         image: imageUrl,
-        expiryDate: data.expiryDate,
+        couponCode: data.couponCode,
+        expiryDate: finalExpiryDate,
       };
       
       if (isEditing && id) {
@@ -356,6 +369,26 @@ const CouponForm = () => {
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="couponCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Coupon Code</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter coupon code (e.g., SAVE20)"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Optional: For text-based coupons or promo codes
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="space-y-2">
               <FormLabel>Coupon Image</FormLabel>
               <div className="grid grid-cols-1 gap-4">
@@ -401,51 +434,79 @@ const CouponForm = () => {
               </div>
             </div>
 
-            <FormField
-              control={form.control}
-              name="expiryDate"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Expiry Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value || undefined}
-                        onSelect={field.onChange}
-                        disabled={(date) =>
-                          date < new Date(new Date().setHours(0, 0, 0, 0))
-                        }
-                        initialFocus
-                        className="p-3 pointer-events-auto"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="expiryDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Expiry Date (Calendar)</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value || undefined}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date < new Date(new Date().setHours(0, 0, 0, 0))
+                          }
+                          initialFocus
+                          className="p-3 pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormDescription>
+                      Pick from calendar
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="expiryDateManual"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Expiry Date (Manual)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          if (e.target.value) {
+                            form.setValue('expiryDate', new Date(e.target.value));
+                          }
+                        }}
                       />
-                    </PopoverContent>
-                  </Popover>
-                  <FormDescription>
-                    When does this coupon expire?
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    </FormControl>
+                    <FormDescription>
+                      Or enter date manually
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </form>
         </Form>
       </CardContent>

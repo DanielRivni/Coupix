@@ -2,11 +2,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { Edit, Trash2, ExternalLink, CheckSquare } from "lucide-react";
+import { Edit, Trash2, ExternalLink, CheckSquare, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Coupon } from "@/lib/types";
 import { useCoupons } from "@/contexts/CouponContext";
+import { toast } from "sonner";
 import CouponDeleteDialog from "./dialogs/CouponDeleteDialog";
 import CouponRedeemDialog from "./dialogs/CouponRedeemDialog";
 import CouponImageDialog from "./dialogs/CouponImageDialog";
@@ -73,6 +74,18 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
     }
   };
   
+  const handleCopyCode = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (coupon.couponCode) {
+      try {
+        await navigator.clipboard.writeText(coupon.couponCode);
+        toast.success("Coupon code copied to clipboard!");
+      } catch (error) {
+        toast.error("Failed to copy coupon code");
+      }
+    }
+  };
+  
   return (
     <>
       <div className="coupon-card group relative">
@@ -119,6 +132,20 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
           
           {coupon.description && (
             <p className="text-sm text-muted-foreground line-clamp-2">{coupon.description}</p>
+          )}
+          
+          {coupon.couponCode && (
+            <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+              <code className="text-sm font-mono flex-1">{coupon.couponCode}</code>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={handleCopyCode}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
           )}
           
           {coupon.expiryDate && (

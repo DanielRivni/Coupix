@@ -17,6 +17,7 @@ export type Database = {
       coupons: {
         Row: {
           amount: number
+          coupon_code: string | null
           created_at: string
           description: string | null
           expiry_date: string | null
@@ -30,6 +31,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          coupon_code?: string | null
           created_at?: string
           description?: string | null
           expiry_date?: string | null
@@ -43,6 +45,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          coupon_code?: string | null
           created_at?: string
           description?: string | null
           expiry_date?: string | null
