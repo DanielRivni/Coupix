@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "cd app && bun run dev",
     "build": "cd app && bun run build",
+    "build:dev": "cd app && bun run build:dev",
     "start": "cd app && bun run start",
     "preview": "cd app && bun run preview"
   },
