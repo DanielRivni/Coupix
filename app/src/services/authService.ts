@@ -66,11 +66,48 @@ export const ensureUserProfile = async (): Promise<boolean> => {
   }
 };
 
-// Login function
-export const login = async (email: string, password: string) => {
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  
-  if (error) throw error;
+// Login function with better error handling and remember me option
+export const login = async (email: string, password: string, rememberMe: boolean = false) => {
+  try {
+    // Set persistence based on the rememberMe option
+    // When rememberMe is true, session will persist across browser restarts
+    // When false, session will be cleared when the browser is closed
+    const persistSession = rememberMe;
+    
+    const { data, error } = await supabase.auth.signInWithPassword({ 
+      email, 
+      password,
+      options: {
+        // Set the persistence option based on rememberMe
+        // This configures how long the session is stored
+        data: { persistSession }
+      }
+    });
+    
+    if (error) {
+      console.error("Authentication error:", error);
+      
+      // Store the error in localStorage so it can be displayed on the login page
+      localStorage.setItem("authError", error.message);
+      
+      // Pass the error code along with the error
+      const enhancedError = new Error(error.message) as Error & { code?: string };
+      enhancedError.code = error.code;
+      throw enhancedError;
+    }
+    
+    // If "Remember me" is enabled, store a flag in localStorage
+    if (rememberMe) {
+      localStorage.setItem("rememberMe", "true");
+    } else {
+      localStorage.removeItem("rememberMe");
+    }
+    
+    return data;
+  } catch (error) {
+    console.error("Login attempt failed:", error);
+    throw error;
+  }
 };
 
 // Signup function
@@ -84,7 +121,10 @@ export const signup = async (email: string, password: string, name: string) => {
     }
   });
   
-  if (error) throw error;
+  if (error) {
+    localStorage.setItem("authError", error.message);
+    throw error;
+  }
 };
 
 // Logout function

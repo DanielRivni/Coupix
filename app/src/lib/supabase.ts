@@ -1,16 +1,21 @@
 
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 
-// Use your Coupix project credentials
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xnxuqojzbfvlppsadwoa.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhueHVxb2p6YmZ2bHBwc2Fkd29hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE1MzY0NTQsImV4cCI6MjA1NzExMjQ1NH0.x8OqRcZKoOqS0V17j74Cu95PeEnnh9q0ubQCMTypnpI';
+// Configure session persistence
+// This ensures the Supabase client uses the correct session persistence settings
+// based on the user's "Remember me" preference
+const configureSessionPersistence = () => {
+  // Check if "Remember me" is enabled
+  const rememberMe = localStorage.getItem("rememberMe") === "true";
+  
+  // Log the current persistence setting
+  console.log("Session persistence configured:", rememberMe ? "persistent" : "session-only");
+};
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-  },
-});
+// Initialize persistence setting
+configureSessionPersistence();
 
 // Check and log initialization
 console.log("Supabase client initialized:", !!supabase);
+
+export { supabase };

@@ -22,7 +22,7 @@ export interface Profile {
 interface AuthContextType {
   currentUser: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
@@ -45,13 +45,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Initialize auth state
   useEffect(() => {
     const initializeAuth = async () => {
       setLoading(true);
       
       try {
-        // Check current session
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           console.log("User is logged in:", session.user.id);
@@ -60,7 +58,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log("No active session found");
         }
         
-        // Listen for auth changes
         const { data: { subscription } } = await supabase.auth.onAuthStateChange(
           async (_event, session) => {
             console.log("Auth state changed. Event:", _event);
@@ -77,7 +74,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         setLoading(false);
         
-        // Cleanup function
         return () => {
           subscription.unsubscribe();
         };
@@ -90,13 +86,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initializeAuth();
   }, []);
 
-  // Login function
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, rememberMe: boolean = false) => {
     try {
       setLoading(true);
-      await loginUser(email, password);
+      await loginUser(email, password, rememberMe);
       toast.success("Login successful");
-      // Navigation handled in Layout component for consistency
     } catch (error: any) {
       console.error("Login error:", error);
       throw error;
@@ -105,7 +99,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Signup function
   const signup = async (email: string, password: string, name: string) => {
     try {
       setLoading(true);
@@ -120,7 +113,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Logout function
   const logout = async () => {
     try {
       await logoutUser();
@@ -133,7 +125,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Password change
   const changePassword = async (currentPassword: string, newPassword: string) => {
     try {
       setLoading(true);
@@ -147,7 +138,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Delete account
   const deleteAccount = async () => {
     try {
       setLoading(true);
