@@ -431,40 +431,48 @@ const CouponForm = () => {
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Expiry Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value || undefined}
-                        onSelect={field.onChange}
-                        disabled={(date) =>
-                          date < new Date(new Date().setHours(0, 0, 0, 0))
+                  <div className="relative">
+                    <Input
+                      type="date"
+                      value={field.value ? format(field.value, "yyyy-MM-dd") : ""}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          field.onChange(new Date(e.target.value));
+                        } else {
+                          field.onChange(null);
                         }
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
+                      }}
+                      min={format(new Date(), "yyyy-MM-dd")}
+                      placeholder="Pick a date"
+                      className="pr-10"
+                    />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full px-3"
+                        >
+                          <CalendarIcon className="h-4 w-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="end">
+                        <Calendar
+                          mode="single"
+                          selected={field.value || undefined}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date < new Date(new Date().setHours(0, 0, 0, 0))
+                          }
+                          initialFocus
+                          className="p-3 pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                   <FormDescription>
-                    Click the calendar icon or the field to select a date
+                    Type a date or click the calendar icon
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

@@ -74,15 +74,14 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
     }
   };
   
-  const handleCopyCode = async (e: React.MouseEvent) => {
+  const handleCopyCode = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (coupon.couponCode) {
-      try {
-        await navigator.clipboard.writeText(coupon.couponCode);
-        toast.success("Coupon code copied to clipboard!");
-      } catch (error) {
-        toast.error("Failed to copy coupon code");
-      }
+      navigator.clipboard.writeText(coupon.couponCode).then(() => {
+        toast.success("Code copied!");
+      }).catch(() => {
+        toast.error("Failed to copy code");
+      });
     }
   };
   
