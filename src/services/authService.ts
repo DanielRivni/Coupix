@@ -76,12 +76,7 @@ export const login = async (email: string, password: string, rememberMe: boolean
     
     const { data, error } = await supabase.auth.signInWithPassword({ 
       email, 
-      password,
-      options: {
-        // Set the persistence option based on rememberMe
-        // This configures how long the session is stored
-        data: { persistSession }
-      }
+      password
     });
     
     if (error) {

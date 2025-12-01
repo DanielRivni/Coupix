@@ -49,17 +49,17 @@ export const createCoupon = async (
   
   const { data, error } = await supabase
     .from('coupons')
-    .insert({
+    .insert([{
       user_id: userId,
       store: couponData.store,
-      amount: couponData.amount ? (isNaN(parseInt(couponData.amount)) ? couponData.amount : parseInt(couponData.amount)) : 0,
+      amount: parseInt(couponData.amount) || 0,
       description: couponData.description,
       link: couponData.link,
       image_url: couponData.image,
       coupon_code: couponData.couponCode,
-      expiry_date: couponData.expiryDate,
+      expiry_date: couponData.expiryDate?.toISOString(),
       is_redeemed: false
-    })
+    }])
     .select('*')
     .single();
   
@@ -91,7 +91,7 @@ export const updateCoupon = async (
   if (couponData.isRedeemed !== undefined) updateData.is_redeemed = couponData.isRedeemed;
   
   // Add updated_at timestamp
-  updateData.updated_at = new Date();
+  updateData.updated_at = new Date().toISOString();
   
   const { data, error } = await supabase
     .from('coupons')
@@ -121,7 +121,7 @@ export const deleteCoupon = async (userId: string, couponId: string): Promise<vo
 export const redeemCoupon = async (userId: string, couponId: string): Promise<Coupon> => {
   const { data, error } = await supabase
     .from('coupons')
-    .update({ is_redeemed: true, updated_at: new Date() })
+    .update({ is_redeemed: true, updated_at: new Date().toISOString() })
     .eq('id', couponId)
     .eq('user_id', userId)
     .select('*')
