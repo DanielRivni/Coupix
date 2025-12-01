@@ -3,7 +3,7 @@ Coupix
 
 Coupix is a modern web application designed to help users store and manage coupons and vouchers efficiently. The app provides a seamless and user-friendly experience with a clean UI and smooth interactions.
 
-🚀 Official Website
+Official Website
 -------------------
 
 [https://coupix.lovable.app](https://coupix.lovable.app/)
@@ -24,7 +24,7 @@ Coupix is built using the latest web technologies:
 *   **Tailwind CSS** - A utility-first CSS framework for efficient styling.
     
 
-✨ Features
+Features
 ----------
 
 *   Secure storage and management of coupons and vouchers.
@@ -36,7 +36,7 @@ Coupix is built using the latest web technologies:
 *   Accessible on both mobile and desktop devices.
     
 
-🚀 CI/CD Pipeline
+CI/CD Pipeline
 ----------
 
 To streamline the development and deployment process, Coupix utilizes a **CI/CD pipeline** powered by **Jenkins, Docker, and Kubernetes**.
