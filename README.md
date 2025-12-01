@@ -8,7 +8,7 @@ Official Website
 
 [https://coupix.lovable.app](https://coupix.lovable.app/)
 
-🛠️ Tech Stack
+Tech Stack
 --------------
 
 Coupix is built using the latest web technologies:
