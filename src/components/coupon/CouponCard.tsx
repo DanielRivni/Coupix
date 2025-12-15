@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { Edit, Trash2, ExternalLink, CheckSquare, Copy } from "lucide-react";
+import { Edit, Trash2, ExternalLink, CheckSquare, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Coupon } from "@/lib/types";
@@ -22,6 +22,7 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [redeemDialogOpen, setRedeemDialogOpen] = useState(false);
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   
   const isExpired = coupon.expiryDate ? new Date() > new Date(coupon.expiryDate) : false;
   
@@ -74,30 +75,43 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
     }
   };
   
-  const handleCopyCode = (e: React.MouseEvent) => {
+  const handleCopyCode = async (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    const code = coupon.couponCode;
-    if (!code) return;
     
-    // Create a temporary textarea element
-    const textArea = document.createElement("textarea");
-    textArea.value = code;
-    textArea.style.position = "fixed";
-    textArea.style.left = "-9999px";
-    textArea.style.top = "-9999px";
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
+    const code = coupon.couponCode;
+    if (!code) {
+      console.log("No coupon code to copy");
+      return;
+    }
+    
+    console.log("Attempting to copy code:", code);
     
     try {
-      document.execCommand("copy");
-      toast.success("Code copied to clipboard!", { duration: 2000 });
+      // Try modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(code);
+      } else {
+        // Fallback for non-secure contexts (like iframes)
+        const textArea = document.createElement("textarea");
+        textArea.value = code;
+        textArea.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+      
+      // Show success feedback
+      setCopied(true);
+      toast.success("Code copied to clipboard!");
+      
+      // Reset icon after 2 seconds
+      setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error("Copy failed:", err);
       toast.error("Failed to copy code");
-    } finally {
-      document.body.removeChild(textArea);
     }
   };
   
@@ -153,12 +167,17 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
             <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
               <code className="text-sm font-mono flex-1">{coupon.couponCode}</code>
               <Button
+                type="button"
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="h-8 w-8 shrink-0"
                 onClick={handleCopyCode}
               >
-                <Copy className="h-4 w-4" />
+                {copied ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
               </Button>
             </div>
           )}
