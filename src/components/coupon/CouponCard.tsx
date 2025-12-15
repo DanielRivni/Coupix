@@ -164,13 +164,13 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
           )}
           
           {coupon.couponCode && (
-            <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+            <div className="flex items-center gap-2 p-2 bg-muted rounded-md relative z-10">
               <code className="text-sm font-mono flex-1">{coupon.couponCode}</code>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 shrink-0"
+                className="h-8 w-8 shrink-0 cursor-pointer hover:bg-accent"
                 onClick={handleCopyCode}
               >
                 {copied ? (
