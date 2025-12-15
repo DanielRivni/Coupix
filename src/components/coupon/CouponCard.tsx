@@ -74,14 +74,23 @@ const CouponCard = ({ coupon }: CouponCardProps) => {
     }
   };
   
-  const handleCopyCode = (e: React.MouseEvent) => {
+  const handleCopyCode = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (coupon.couponCode) {
-      navigator.clipboard.writeText(coupon.couponCode).then(() => {
-        toast.success("Code copied!");
-      }).catch(() => {
-        toast.error("Failed to copy code");
-      });
+    const code = coupon.couponCode;
+    if (code) {
+      try {
+        await navigator.clipboard.writeText(code);
+        toast.success("Code copied to clipboard!", { duration: 1500 });
+      } catch (err) {
+        // Fallback for older browsers
+        const textArea = document.createElement("textarea");
+        textArea.value = code;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+        toast.success("Code copied to clipboard!", { duration: 1500 });
+      }
     }
   };
   
